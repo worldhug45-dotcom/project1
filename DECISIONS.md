@@ -56,6 +56,13 @@
 - Decision: 외부 API 연동 전에 각 소스의 샘플 응답 fixture를 확보하고, DTO 파싱과 정규화 테스트를 fixture 기반으로 먼저 작성한다.
 - Consequences: 외부 API 장애나 응답 변동과 내부 구조 설계를 분리할 수 있으며, API 없이도 핵심 정규화 로직을 검증할 수 있다.
 
+## 2026-04-16 - 공통 데이터 모델 정의
+
+- Status: Accepted
+- Context: 기업마당과 나라장터 공고를 같은 흐름에서 판정, 저장, 산출하려면 내부 공통 모델이 필요하다.
+- Decision: 내부 공통 모델은 `Notice`로 정의하고, 중복 판단은 `DeduplicationKey`로 수행한다. `Notice`는 `source`, `notice_type`, `business_domains`, `primary_domain`, `title`, `organization`, `status`, `url`, `match_keywords`, `collected_at`을 필수 값으로 가진다. `posted_at`, `end_at`, `source_notice_id`, `raw_source_name`, `summary`는 선택 값으로 둔다.
+- Consequences: 기업마당과 나라장터 원천 응답은 모두 `Notice`로 정규화해야 하며, 엑셀 필수 컬럼은 `Notice`에서 산출한다.
+
 ## 2026-04-16 - 공통 데이터 전달 기준
 
 - Status: Accepted
@@ -72,10 +79,8 @@
 
 ## 미확정 결정 목록
 
-- 공통 데이터 모델 필드별 타입
 - 설정 파일 포맷
 - 저장소 구현 방식
-- 중복 판단 키 구성
 - 키워드 매칭 대소문자 처리 방식
 - `primary_domain` 선정 우선순위
 - 외부 API 실패 재시도 횟수
