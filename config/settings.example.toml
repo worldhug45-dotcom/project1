@@ -1,0 +1,52 @@
+[app]
+name = "project1"
+env = "local"
+timezone = "Asia/Seoul"
+
+[sources.bizinfo]
+enabled = true
+endpoint = "https://www.bizinfo.go.kr/..."
+timeout_seconds = 10
+retry_count = 3
+retry_backoff_seconds = 2
+page_size = 20
+
+[sources.g2b]
+enabled = true
+endpoint = "https://apis.data.go.kr/..."
+timeout_seconds = 10
+retry_count = 3
+retry_backoff_seconds = 2
+page_size = 20
+
+[keywords]
+core = ["AI", "인공지능", "디지털전환", "DX", "디지털트윈", "시스템 통합", "SI", "정보화"]
+supporting = ["데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "보안", "IT서비스", "유지보수"]
+exclude = ["채용", "행사", "교육", "경진대회", "복지", "문화", "비관련 제조 일반"]
+
+[storage]
+type = "sqlite"
+database_path = "data/notices.sqlite3"
+
+[export]
+output_dir = "output"
+filename_pattern = "notices_{run_date}_{run_id}.xlsx"
+support_sheet_name = "support_notices"
+bid_sheet_name = "bid_notices"
+date_format = "%Y-%m-%d"
+
+[logging]
+level = "INFO"
+log_dir = "logs"
+format = "jsonl"
+filename_pattern = "run_{run_date}.jsonl"
+
+[runtime]
+action = "all"
+mode = "normal"
+run_id_strategy = "timestamp_uuid"
+
+[validation]
+fail_fast = true
+allow_unknown_keys = false
+require_at_least_one_source = true

@@ -3,6 +3,9 @@
 이 문서는 `README.md`를 기준으로 1차 MVP 구현을 작은 작업 단위로 나누기 위한 작업 지시서이다.  
 각 작업은 한 번에 하나씩 진행하며, 완료 후 `DECISIONS.md`와 `CHECKLIST.md`를 갱신한다.
 
+문서 기준 확정 단계의 핵심 항목이 완료되었으므로, 이제부터 1차 MVP 코드 구현을 시작한다.
+구현은 `README.md` 범위와 본 문서의 작업 순서를 따르며, 범위 밖 기능은 즉시 구현하지 않는다.
+
 ## 작업 원칙
 
 - 기능 완성보다 계층과 인터페이스 고정을 우선한다.
@@ -44,29 +47,29 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 
 ## 1단계: 프로젝트 골격 고정
 
-- [ ] 권장 프로젝트 폴더 구조 생성
-- [ ] Python 패키지 경계 정의
-- [ ] 실행 진입점 `app/main.py` 생성
-- [ ] CLI 액션 `collect`, `export`, `all` 틀 정의
-- [ ] 환경별 설정 파일 위치 정의
-- [ ] 기본 설정 로더 인터페이스 정의
-- [ ] 필수 설정값 검증 흐름 정의
+- [x] 권장 프로젝트 폴더 구조 생성
+- [x] Python 패키지 경계 정의
+- [x] 실행 진입점 `app/main.py` 생성
+- [x] CLI 액션 `collect`, `export`, `all` 틀 정의
+- [x] 환경별 설정 파일 위치 정의
+- [x] 기본 설정 로더 인터페이스 정의
+- [x] 필수 설정값 검증 흐름 정의
 
 ## 2단계: Domain 계층 고정
 
 2단계는 0단계에서 문서로 확정한 도메인 기준을 실제 코드 모델로 반영하는 단계이다.
 
-- [ ] `Notice` 공통 데이터 모델 정의
-- [ ] `NoticeType` 값 정의
-- [ ] `BusinessDomain` 값 정의
-- [ ] `NoticeSource` 값 정의
-- [ ] `NoticeStatus` 값 정의
-- [ ] `MatchedKeyword` 표현 방식 정의
-- [ ] 중복 판단용 `DeduplicationKey` 정의
-- [ ] 날짜 값 변환 규칙 정의
-- [ ] URL 값 검증 규칙 정의
-- [ ] 키워드 판정 규칙의 Domain 계층 소속 확정
-- [ ] `business_domains`, `primary_domain` 분류 규칙의 Domain 계층 소속 확정
+- [x] `Notice` 공통 데이터 모델 정의
+- [x] `NoticeType` 값 정의
+- [x] `BusinessDomain` 값 정의
+- [x] `NoticeSource` 값 정의
+- [x] `NoticeStatus` 값 정의
+- [x] `MatchedKeyword` 표현 방식 정의
+- [x] 중복 판단용 `DeduplicationKey` 정의
+- [x] 날짜 값 변환 규칙 정의
+- [x] URL 값 검증 규칙 정의
+- [x] 키워드 판정 규칙의 Domain 계층 소속 확정
+- [x] `business_domains`, `primary_domain` 분류 규칙의 Domain 계층 소속 확정
 
 ## 3단계: Application 계층 인터페이스 고정
 

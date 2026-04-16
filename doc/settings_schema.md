@@ -119,11 +119,11 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 
 | 필드 | 필수 여부 | 타입 | 기본값 | 설명 |
 | --- | --- | --- | --- | --- |
-| `core` | 필수 | `list[str]` | README 기준 핵심 키워드 | 핵심 키워드 |
-| `supporting` | 필수 | `list[str]` | README 기준 보조 키워드 | 보조 키워드 |
-| `exclude` | 필수 | `list[str]` | README 기준 강제 제외 키워드 | 강제 제외 키워드 |
+| `core` | 필수 | `list[str]` | 없음 | 핵심 키워드 |
+| `supporting` | 필수 | `list[str]` | 없음 | 보조 키워드 |
+| `exclude` | 필수 | `list[str]` | 없음 | 강제 제외 키워드 |
 
-기본 키워드는 `README.md`의 키워드 운영 기준을 따른다.  
+초기 키워드 예시는 `config/settings.example.toml`에 제공하며, 기준은 `README.md`의 키워드 운영 기준을 따른다.
 키워드 판정 규칙 자체는 별도 문서에서 확정한다.
 
 ## 10. storage 섹션
@@ -294,4 +294,3 @@ require_at_least_one_source = true
 - API 키 필수 여부와 인증 파라미터명
 - `dry_run` 구현 여부
 - 설정 로더 구현 방식
-

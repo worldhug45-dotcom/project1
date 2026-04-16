@@ -77,6 +77,13 @@
 - Decision: 키워드 매칭 대상은 `title`, `organization`, `summary`, `raw_source_name`으로 한정하고 URL과 날짜 값은 제외한다. 전처리는 `NFKC`, 공백 정규화, 영문 casefold를 적용한다. 강제 제외 키워드는 핵심/보조 키워드보다 우선하며, 핵심 또는 보조 키워드가 1개 이상 매칭되고 제외 키워드가 없으면 적격으로 판정할 수 있다. `primary_domain`은 핵심 여부, 도메인 우선순위, 필드 우선순위, 최초 출현 순서로 선정한다.
 - Consequences: 키워드 판정은 Domain 계층의 비즈니스 규칙으로 유지되며, 정규화 결과는 이 규칙에 따라 `business_domains`, `primary_domain`, `match_keywords`를 생성해야 한다.
 
+## 2026-04-16 - 코드 구현 착수 승인
+
+- Status: Accepted
+- Context: 공통 데이터 모델, 설정 스키마, 키워드 판정 규칙 등 0단계 핵심 기준이 문서로 확정되었다.
+- Decision: 지금부터 1차 MVP 코드 구현을 시작한다. 구현 범위는 `README.md`에 정의된 1차 범위로 한정한다.
+- Consequences: 첫 구현 우선순위는 프로젝트 골격, 공통 데이터 모델 코드 반영, 설정 로더/검증 구조, CLI 진입점 정의 순으로 진행한다.
+
 ## 2026-04-16 - 공통 데이터 전달 기준
 
 - Status: Accepted
