@@ -63,6 +63,13 @@
 - Decision: 내부 공통 모델은 `Notice`로 정의하고, 중복 판단은 `DeduplicationKey`로 수행한다. `Notice`는 `source`, `notice_type`, `business_domains`, `primary_domain`, `title`, `organization`, `status`, `url`, `match_keywords`, `collected_at`을 필수 값으로 가진다. `posted_at`, `end_at`, `source_notice_id`, `raw_source_name`, `summary`는 선택 값으로 둔다.
 - Consequences: 기업마당과 나라장터 원천 응답은 모두 `Notice`로 정규화해야 하며, 엑셀 필수 컬럼은 `Notice`에서 산출한다.
 
+## 2026-04-16 - 설정 파일 구조 정의
+
+- Status: Accepted
+- Context: 소스 어댑터, 키워드 판정, 저장, 엑셀 출력, 로그 구현이 하드코딩에 의존하지 않으려면 설정 구조와 override 규칙을 먼저 고정해야 한다.
+- Decision: 설정 파일 포맷은 `TOML`로 하고 기본 경로는 `config/settings.toml`로 한다. 설정 섹션은 `app`, `sources`, `keywords`, `storage`, `export`, `logging`, `runtime`, `validation`으로 구성한다. Override 우선순위는 `CLI 인자 > 환경 변수 > 설정 파일 > 기본값`으로 한다. 비밀값은 설정 파일에 저장하지 않고 환경 변수 또는 CI/CD secret으로만 주입한다.
+- Consequences: 키워드, 활성 소스, 타임아웃, 재시도, 출력 경로, 시트명, 로그 경로는 코드에 하드코딩하지 않고 설정에서 읽어야 한다.
+
 ## 2026-04-16 - 공통 데이터 전달 기준
 
 - Status: Accepted
@@ -79,12 +86,11 @@
 
 ## 미확정 결정 목록
 
-- 설정 파일 포맷
 - 저장소 구현 방식
 - 키워드 매칭 대소문자 처리 방식
 - `primary_domain` 선정 우선순위
-- 외부 API 실패 재시도 횟수
-- 로그 출력 위치와 포맷
-- 엑셀 파일명 규칙
 - 테스트 도구와 커버리지 기준
 - fixture 저장 위치와 파일명 규칙
+- 실제 기업마당 API endpoint 값
+- 실제 나라장터 API endpoint 값
+- API 키 필수 여부와 인증 파라미터명
