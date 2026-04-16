@@ -70,6 +70,13 @@
 - Decision: 설정 파일 포맷은 `TOML`로 하고 기본 경로는 `config/settings.toml`로 한다. 설정 섹션은 `app`, `sources`, `keywords`, `storage`, `export`, `logging`, `runtime`, `validation`으로 구성한다. Override 우선순위는 `CLI 인자 > 환경 변수 > 설정 파일 > 기본값`으로 한다. 비밀값은 설정 파일에 저장하지 않고 환경 변수 또는 CI/CD secret으로만 주입한다.
 - Consequences: 키워드, 활성 소스, 타임아웃, 재시도, 출력 경로, 시트명, 로그 경로는 코드에 하드코딩하지 않고 설정에서 읽어야 한다.
 
+## 2026-04-16 - 키워드 판정 규칙 정의
+
+- Status: Accepted
+- Context: `Notice.business_domains`, `Notice.primary_domain`, `Notice.match_keywords`를 일관되게 생성하려면 매칭 대상, 전처리, 우선순위, 도메인 매핑, 적격 판정 기준을 먼저 고정해야 한다.
+- Decision: 키워드 매칭 대상은 `title`, `organization`, `summary`, `raw_source_name`으로 한정하고 URL과 날짜 값은 제외한다. 전처리는 `NFKC`, 공백 정규화, 영문 casefold를 적용한다. 강제 제외 키워드는 핵심/보조 키워드보다 우선하며, 핵심 또는 보조 키워드가 1개 이상 매칭되고 제외 키워드가 없으면 적격으로 판정할 수 있다. `primary_domain`은 핵심 여부, 도메인 우선순위, 필드 우선순위, 최초 출현 순서로 선정한다.
+- Consequences: 키워드 판정은 Domain 계층의 비즈니스 규칙으로 유지되며, 정규화 결과는 이 규칙에 따라 `business_domains`, `primary_domain`, `match_keywords`를 생성해야 한다.
+
 ## 2026-04-16 - 공통 데이터 전달 기준
 
 - Status: Accepted
@@ -87,10 +94,9 @@
 ## 미확정 결정 목록
 
 - 저장소 구현 방식
-- 키워드 매칭 대소문자 처리 방식
-- `primary_domain` 선정 우선순위
 - 테스트 도구와 커버리지 기준
 - fixture 저장 위치와 파일명 규칙
 - 실제 기업마당 API endpoint 값
 - 실제 나라장터 API endpoint 값
 - API 키 필수 여부와 인증 파라미터명
+- 설정 파일에서 도메인 매핑을 표현하는 구체적 구조

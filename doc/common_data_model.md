@@ -177,9 +177,6 @@
 
 ## 13. 남은 결정 사항
 
-- `primary_domain` 선정 우선순위
-- 키워드 대소문자 처리 방식
 - URL query parameter 제거 범위
 - `source_notice_id`가 없는 원천 데이터의 fallback 키 신뢰도 기록 방식
 - fixture 저장 위치와 파일명 규칙
-
