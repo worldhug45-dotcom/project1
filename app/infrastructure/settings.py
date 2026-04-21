@@ -14,6 +14,11 @@ class ConfigurationError(ValueError):
     """Raised when settings cannot be loaded or validated."""
 
 
+BIZINFO_CERT_KEY_ENV_VAR = "PROJECT1_BIZINFO_CERT_KEY"
+KEYWORDS_OVERRIDE_PATH_ENV_VAR = "PROJECT1_KEYWORDS_OVERRIDE_PATH"
+DEFAULT_KEYWORDS_OVERRIDE_FILENAME = "keywords.override.toml"
+
+
 @dataclass(frozen=True, slots=True)
 class AppSettings:
     name: str = "project1"
@@ -25,6 +30,8 @@ class AppSettings:
 class SourceSettings:
     enabled: bool = True
     endpoint: str = ""
+    fixture_path: Path = Path("")
+    cert_key: str = field(default="", repr=False)
     timeout_seconds: int = 10
     retry_count: int = 3
     retry_backoff_seconds: int = 2
@@ -71,6 +78,7 @@ class LoggingSettings:
 class RuntimeSettings:
     action: str = "all"
     mode: str = "normal"
+    source_mode: str = "api"
     run_id_strategy: str = "timestamp_uuid"
 
 
@@ -101,16 +109,47 @@ def load_settings(
 ) -> Settings:
     """Load settings using CLI > env > file > defaults precedence."""
 
+    environment = environ or os.environ
     settings = Settings()
     if config_path and config_path.exists():
         settings = _merge_dict(settings, _read_toml(config_path))
     elif config_path and not config_path.exists():
         raise ConfigurationError(f"Config file does not exist: {config_path}")
 
-    settings = _apply_env(settings, environ or os.environ)
+    keyword_override_path = resolve_keyword_override_path(config_path, environment)
+    if keyword_override_path is not None:
+        settings = _apply_keyword_override_file(settings, keyword_override_path)
+
+    settings = _apply_env(settings, environment)
     settings = _apply_cli(settings, cli_overrides or {})
     validate_settings(settings)
     return settings
+
+
+def resolve_keyword_override_path(
+    config_path: Path | None = None,
+    environ: dict[str, str] | None = None,
+) -> Path | None:
+    """Return the user keyword override file when it exists."""
+
+    environment = environ or os.environ
+    if KEYWORDS_OVERRIDE_PATH_ENV_VAR in environment:
+        override_path = Path(environment[KEYWORDS_OVERRIDE_PATH_ENV_VAR])
+        if not override_path.exists():
+            raise ConfigurationError(
+                f"Keyword override file does not exist: {override_path}"
+            )
+        return override_path
+
+    if config_path is not None:
+        candidate = config_path.with_name(DEFAULT_KEYWORDS_OVERRIDE_FILENAME)
+        if candidate.exists():
+            return candidate
+
+    default_candidate = Path("config") / DEFAULT_KEYWORDS_OVERRIDE_FILENAME
+    if default_candidate.exists():
+        return default_candidate
+    return None
 
 
 def validate_settings(settings: Settings) -> None:
@@ -130,10 +169,23 @@ def validate_settings(settings: Settings) -> None:
     ):
         errors.append("At least one source must be enabled.")
 
-    if settings.runtime.action in {"collect", "all"}:
+    if settings.runtime.action in {"collect", "all"} and settings.runtime.source_mode == "api":
         for label, source in enabled_sources:
             if source.enabled and not source.endpoint.strip():
                 errors.append(f"{label}.endpoint is required when the source is enabled.")
+        if settings.sources.bizinfo.enabled and not settings.sources.bizinfo.cert_key.strip():
+            errors.append(
+                f"sources.bizinfo.cert_key must be provided via {BIZINFO_CERT_KEY_ENV_VAR} in api source mode."
+            )
+    if settings.runtime.action in {"collect", "all"} and settings.runtime.source_mode == "fixture":
+        if not settings.sources.bizinfo.enabled:
+            errors.append("sources.bizinfo.enabled must be true in fixture source mode.")
+        if not str(settings.sources.bizinfo.fixture_path).strip():
+            errors.append("sources.bizinfo.fixture_path is required in fixture source mode.")
+        elif not settings.sources.bizinfo.fixture_path.exists():
+            errors.append(
+                f"sources.bizinfo.fixture_path does not exist: {settings.sources.bizinfo.fixture_path}"
+            )
 
     for label, source in enabled_sources:
         if source.timeout_seconds < 1:
@@ -159,6 +211,8 @@ def validate_settings(settings: Settings) -> None:
         errors.append("runtime.action must be one of: collect, export, all.")
     if settings.runtime.mode not in {"normal", "dry_run"}:
         errors.append("runtime.mode must be one of: normal, dry_run.")
+    if settings.runtime.source_mode not in {"api", "fixture"}:
+        errors.append("runtime.source_mode must be one of: api, fixture.")
     if settings.logging.format not in {"jsonl", "text"}:
         errors.append("logging.format must be one of: jsonl, text.")
 
@@ -169,6 +223,18 @@ def validate_settings(settings: Settings) -> None:
 def _read_toml(path: Path) -> dict[str, Any]:
     with path.open("rb") as file:
         return tomllib.load(file)
+
+
+def _apply_keyword_override_file(settings: Settings, path: Path) -> Settings:
+    raw = _read_toml(path)
+    override_raw = raw.get("keywords_override", {})
+    if not isinstance(override_raw, dict):
+        raise ConfigurationError("keywords_override must be a TOML table.")
+
+    return replace(
+        settings,
+        keywords=_merge_keywords_override(settings.keywords, override_raw),
+    )
 
 
 def _is_supported_timezone(value: str) -> bool:
@@ -208,6 +274,7 @@ def _merge_source(current: SourceSettings, raw: dict[str, Any]) -> SourceSetting
         current,
         enabled=_as_bool(raw.get("enabled", current.enabled)),
         endpoint=str(raw.get("endpoint", current.endpoint)),
+        fixture_path=Path(raw.get("fixture_path", current.fixture_path)),
         timeout_seconds=int(raw.get("timeout_seconds", current.timeout_seconds)),
         retry_count=int(raw.get("retry_count", current.retry_count)),
         retry_backoff_seconds=int(
@@ -231,6 +298,28 @@ def _merge_keywords(current: KeywordsSettings, raw: dict[str, Any]) -> KeywordsS
         core=tuple(raw.get("core", current.core)),
         supporting=tuple(raw.get("supporting", current.supporting)),
         exclude=tuple(raw.get("exclude", current.exclude)),
+    )
+
+
+def _merge_keywords_override(
+    current: KeywordsSettings,
+    raw: dict[str, Any],
+) -> KeywordsSettings:
+    add_core = _keyword_list(raw.get("add_core", []))
+    add_supporting = _keyword_list(raw.get("add_supporting", []))
+    add_exclude = _keyword_list(raw.get("add_exclude", []))
+    remove_core = _keyword_list(raw.get("remove_core", []))
+    remove_supporting = _keyword_list(raw.get("remove_supporting", []))
+    remove_exclude = _keyword_list(raw.get("remove_exclude", []))
+
+    return replace(
+        current,
+        core=_remove_keywords(_append_keywords(current.core, add_core), remove_core),
+        supporting=_remove_keywords(
+            _append_keywords(current.supporting, add_supporting),
+            remove_supporting,
+        ),
+        exclude=_remove_keywords(_append_keywords(current.exclude, add_exclude), remove_exclude),
     )
 
 
@@ -268,6 +357,7 @@ def _merge_runtime(current: RuntimeSettings, raw: dict[str, Any]) -> RuntimeSett
         current,
         action=str(raw.get("action", current.action)),
         mode=str(raw.get("mode", current.mode)),
+        source_mode=str(raw.get("source_mode", current.source_mode)),
         run_id_strategy=str(raw.get("run_id_strategy", current.run_id_strategy)),
     )
 
@@ -290,13 +380,27 @@ def _apply_env(settings: Settings, environ: dict[str, str]) -> Settings:
     _set_if_present(raw, ("app", "env"), environ, "PROJECT1_APP_ENV")
     _set_if_present(raw, ("sources", "bizinfo", "enabled"), environ, "PROJECT1_SOURCES_BIZINFO_ENABLED")
     _set_if_present(raw, ("sources", "bizinfo", "endpoint"), environ, "PROJECT1_SOURCES_BIZINFO_ENDPOINT")
+    _set_if_present(raw, ("sources", "bizinfo", "fixture_path"), environ, "PROJECT1_SOURCES_BIZINFO_FIXTURE_PATH")
     _set_if_present(raw, ("sources", "g2b", "enabled"), environ, "PROJECT1_SOURCES_G2B_ENABLED")
     _set_if_present(raw, ("sources", "g2b", "endpoint"), environ, "PROJECT1_SOURCES_G2B_ENDPOINT")
     _set_if_present(raw, ("storage", "database_path"), environ, "PROJECT1_STORAGE_DATABASE_PATH")
     _set_if_present(raw, ("export", "output_dir"), environ, "PROJECT1_EXPORT_OUTPUT_DIR")
     _set_if_present(raw, ("logging", "level"), environ, "PROJECT1_LOGGING_LEVEL")
     _set_if_present(raw, ("runtime", "action"), environ, "PROJECT1_RUNTIME_ACTION")
-    return _merge_dict(settings, raw)
+    _set_if_present(raw, ("runtime", "source_mode"), environ, "PROJECT1_RUNTIME_SOURCE_MODE")
+    settings = _merge_dict(settings, raw)
+    if BIZINFO_CERT_KEY_ENV_VAR in environ:
+        settings = replace(
+            settings,
+            sources=replace(
+                settings.sources,
+                bizinfo=replace(
+                    settings.sources.bizinfo,
+                    cert_key=environ[BIZINFO_CERT_KEY_ENV_VAR],
+                ),
+            ),
+        )
+    return settings
 
 
 def _apply_cli(settings: Settings, overrides: dict[str, str]) -> Settings:
@@ -305,6 +409,8 @@ def _apply_cli(settings: Settings, overrides: dict[str, str]) -> Settings:
         _assign_nested(raw, ("runtime", "action"), action)
     if mode := overrides.get("mode"):
         _assign_nested(raw, ("runtime", "mode"), mode)
+    if source_mode := overrides.get("source_mode"):
+        _assign_nested(raw, ("runtime", "source_mode"), source_mode)
     if env := overrides.get("env"):
         _assign_nested(raw, ("app", "env"), env)
     return _merge_dict(settings, raw)
@@ -333,3 +439,34 @@ def _as_bool(value: Any) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "y", "on"}
     return bool(value)
+
+
+def _keyword_list(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, (list, tuple)):
+        raise ConfigurationError("Keyword override values must be arrays of strings.")
+    return tuple(_normalize_keyword(item) for item in value if _normalize_keyword(item))
+
+
+def _append_keywords(base: tuple[str, ...], additions: tuple[str, ...]) -> tuple[str, ...]:
+    values = list(base)
+    existing = {item.casefold() for item in base}
+    for keyword in additions:
+        key = keyword.casefold()
+        if key in existing:
+            continue
+        values.append(keyword)
+        existing.add(key)
+    return tuple(values)
+
+
+def _remove_keywords(base: tuple[str, ...], removals: tuple[str, ...]) -> tuple[str, ...]:
+    removal_keys = {keyword.casefold() for keyword in removals}
+    if not removal_keys:
+        return base
+    return tuple(keyword for keyword in base if keyword.casefold() not in removal_keys)
+
+
+def _normalize_keyword(value: Any) -> str:
+    return str(value).strip()

@@ -1,0 +1,29 @@
+{
+  "response": {
+    "body": {
+      "items": [
+        {
+          "pblancId": "BIZ-2026-0001",
+          "pblancNm": "AI 기반 업무 자동화 지원사업",
+          "jrsdInsttNm": "중소벤처기업부",
+          "creatPnttm": "2026-04-01",
+          "reqstEndDe": "2026-04-30",
+          "pblancSttusNm": "접수중",
+          "pblancUrl": "https://www.bizinfo.go.kr/notice/BIZ-2026-0001",
+          "bsnsSumryCn": "중소기업의 인공지능, 데이터 활용 업무 자동화를 지원한다."
+        },
+        {
+          "pblancId": "BIZ-2026-0002",
+          "pblancNm": "지역 문화행사 운영 지원",
+          "jrsdInsttNm": "문화체육관광부",
+          "creatPnttm": "2026-04-02",
+          "reqstEndDe": "2026-04-20",
+          "pblancSttusNm": "접수중",
+          "pblancUrl": "https://www.bizinfo.go.kr/notice/BIZ-2026-0002",
+          "bsnsSumryCn": "지역 문화행사 운영 비용을 지원한다."
+        }
+      ]
+    }
+  }
+}
+

@@ -5,11 +5,13 @@ timezone = "Asia/Seoul"
 
 [sources.bizinfo]
 enabled = true
-endpoint = "https://www.bizinfo.go.kr/..."
+endpoint = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+fixture_path = "tests/fixtures/bizinfo/support_notices.json"
 timeout_seconds = 10
 retry_count = 3
 retry_backoff_seconds = 2
 page_size = 20
+# 인증키는 TOML에 넣지 않고 환경 변수 PROJECT1_BIZINFO_CERT_KEY로만 주입한다.
 
 [sources.g2b]
 enabled = true
@@ -21,7 +23,7 @@ page_size = 20
 
 [keywords]
 core = ["AI", "인공지능", "디지털전환", "DX", "디지털트윈", "시스템 통합", "SI", "정보화"]
-supporting = ["데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "보안", "IT서비스", "유지보수"]
+supporting = ["데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "사물인터넷", "IoT", "보안", "ICT", "SW", "소프트웨어", "IT서비스", "유지보수"]
 exclude = ["채용", "행사", "교육", "경진대회", "복지", "문화", "비관련 제조 일반"]
 
 [storage]
@@ -44,6 +46,7 @@ filename_pattern = "run_{run_date}.jsonl"
 [runtime]
 action = "all"
 mode = "normal"
+source_mode = "api"
 run_id_strategy = "timestamp_uuid"
 
 [validation]

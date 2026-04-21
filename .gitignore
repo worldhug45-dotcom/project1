@@ -11,8 +11,9 @@ venv/
 config/settings.local.toml
 config/settings.dev.toml
 config/settings.prod.toml
+config/keywords.override.toml
 
 data/
 output/
 logs/
-
+.test_tmp/

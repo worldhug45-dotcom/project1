@@ -41,17 +41,19 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | `app.env` | `PROJECT1_APP_ENV` |
 | `sources.bizinfo.enabled` | `PROJECT1_SOURCES_BIZINFO_ENABLED` |
 | `sources.bizinfo.endpoint` | `PROJECT1_SOURCES_BIZINFO_ENDPOINT` |
+| `sources.bizinfo.fixture_path` | `PROJECT1_SOURCES_BIZINFO_FIXTURE_PATH` |
 | `sources.g2b.endpoint` | `PROJECT1_SOURCES_G2B_ENDPOINT` |
 | `storage.database_path` | `PROJECT1_STORAGE_DATABASE_PATH` |
 | `export.output_dir` | `PROJECT1_EXPORT_OUTPUT_DIR` |
 | `logging.level` | `PROJECT1_LOGGING_LEVEL` |
 | `runtime.action` | `PROJECT1_RUNTIME_ACTION` |
+| `runtime.source_mode` | `PROJECT1_RUNTIME_SOURCE_MODE` |
 
 비밀값은 아래처럼 별도 환경 변수로만 관리한다.
 
 | 비밀값 | 환경 변수 예시 |
 | --- | --- |
-| 기업마당 API 키 | `PROJECT1_BIZINFO_API_KEY` |
+| 기업마당 API 인증키 (`crtfcKey`) | `PROJECT1_BIZINFO_CERT_KEY` |
 | 나라장터 API 키 | `PROJECT1_G2B_API_KEY` |
 
 ## 6. 설정 섹션
@@ -83,6 +85,7 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | --- | --- | --- | --- | --- |
 | `enabled` | 선택 | `bool` | 소스별 기본값 사용 | 해당 소스 활성화 여부 |
 | `endpoint` | 필수 | `str` | 없음 | API 엔드포인트 |
+| `fixture_path` | 조건부 필수 | `str` | 없음 | fixture 모드에서 사용할 샘플 응답 파일 경로 |
 | `timeout_seconds` | 선택 | `int` | `10` | 단일 요청 타임아웃 |
 | `retry_count` | 선택 | `int` | `3` | 재시도 횟수 |
 | `retry_backoff_seconds` | 선택 | `int` | `2` | 재시도 간 기본 대기 시간 |
@@ -94,6 +97,8 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | --- | --- | --- | --- | --- |
 | `sources.bizinfo.enabled` | 선택 | `bool` | `true` | 기업마당 수집 활성화 |
 | `sources.bizinfo.endpoint` | 필수 | `str` | 없음 | 지원사업정보 API 엔드포인트 |
+| `sources.bizinfo.fixture_path` | 조건부 필수 | `str` | 없음 | `runtime.source_mode = "fixture"`에서 사용할 기업마당 fixture 경로 |
+| `sources.bizinfo.cert_key` | 환경 변수 전용 | `str` | 없음 | `runtime.source_mode = "api"`에서 `PROJECT1_BIZINFO_CERT_KEY`로만 주입하는 기업마당 인증키 |
 | `sources.bizinfo.timeout_seconds` | 선택 | `int` | `10` | 요청 타임아웃 |
 | `sources.bizinfo.retry_count` | 선택 | `int` | `3` | 재시도 횟수 |
 | `sources.bizinfo.retry_backoff_seconds` | 선택 | `int` | `2` | 재시도 대기 시간 |
@@ -110,7 +115,9 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | `sources.g2b.retry_backoff_seconds` | 선택 | `int` | `2` | 재시도 대기 시간 |
 | `sources.g2b.page_size` | 선택 | `int` | `20` | 조회 건수 |
 
-활성화된 소스의 `endpoint`는 필수이다.  
+`runtime.source_mode = "api"`일 때 활성화된 소스의 `endpoint`는 필수이다.  
+기업마당 실제 API 모드에서는 `PROJECT1_BIZINFO_CERT_KEY`가 필수이며, 이 값은 설정 파일이 아니라 환경 변수에서만 읽는다.  
+`runtime.source_mode = "fixture"`일 때 기업마당 수집은 `sources.bizinfo.fixture_path`를 사용하며, 실제 외부 API endpoint 검증은 수행하지 않는다.  
 비활성화된 소스의 `endpoint`는 검증 대상에서 제외할 수 있다.
 
 ## 9. keywords 섹션
@@ -169,10 +176,12 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | --- | --- | --- | --- | --- |
 | `action` | 선택 | `str` | `all` | 실행 액션. `collect`, `export`, `all` 중 하나 |
 | `mode` | 선택 | `str` | `normal` | 실행 모드. `normal`, `dry_run` 중 하나 |
+| `source_mode` | 선택 | `str` | `api` | 소스 입력 모드. `api`, `fixture` 중 하나 |
 | `run_id_strategy` | 선택 | `str` | `timestamp_uuid` | 실행 ID 생성 방식 |
 
 `dry_run`은 저장이나 엑셀 파일 생성을 수행하지 않는 검증 모드로 예약한다.  
 1차 구현에서 `dry_run`을 구현하지 않으면 CLI에서 선택할 수 없게 막는다.
+`fixture` source mode는 외부 API 없이 샘플 응답으로 collect 흐름을 end-to-end 검증하기 위한 로컬 실행 모드이다.
 
 ## 14. validation 섹션
 
@@ -186,7 +195,9 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 
 아래 값은 실행 시작 시 검증한다.
 
-- 활성화된 소스의 `endpoint`
+- `api` source mode에서 활성화된 소스의 `endpoint`
+- `api` source mode에서 `sources.bizinfo.enabled = true`이면 `PROJECT1_BIZINFO_CERT_KEY`
+- `fixture` source mode에서 `sources.bizinfo.fixture_path`
 - `storage.type`
 - `storage.database_path`
 - `export.output_dir`
@@ -203,6 +214,8 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 - `app.env`가 `local`, `dev`, `prod`가 아니다.
 - `app.timezone`이 유효한 timezone 이름이 아니다.
 - 활성화된 소스의 `endpoint`가 비어 있다.
+- `runtime.source_mode`가 `api`인데 `PROJECT1_BIZINFO_CERT_KEY`가 비어 있다.
+- `runtime.source_mode`가 `fixture`인데 `sources.bizinfo.fixture_path`가 비어 있거나 존재하지 않는다.
 - `timeout_seconds`가 1보다 작다.
 - `retry_count`가 0보다 작다.
 - `page_size`가 1보다 작다.
@@ -211,6 +224,7 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 - `storage.database_path`가 비어 있다.
 - `export.output_dir`이 비어 있다.
 - `runtime.action`이 `collect`, `export`, `all`이 아니다.
+- `runtime.source_mode`가 `api`, `fixture`가 아니다.
 - `validation.require_at_least_one_source`가 `true`인데 활성화된 소스가 없다.
 
 아래 조건은 경고로 기록하고 기본값을 사용할 수 있다.
@@ -229,7 +243,8 @@ timezone = "Asia/Seoul"
 
 [sources.bizinfo]
 enabled = true
-endpoint = "https://www.bizinfo.go.kr/..."
+endpoint = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+fixture_path = "tests/fixtures/bizinfo/support_notices.json"
 timeout_seconds = 10
 retry_count = 3
 retry_backoff_seconds = 2
@@ -245,7 +260,7 @@ page_size = 20
 
 [keywords]
 core = ["AI", "인공지능", "디지털전환", "DX", "디지털트윈", "시스템 통합", "SI", "정보화"]
-supporting = ["데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "보안", "IT서비스", "유지보수"]
+supporting = ["데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "사물인터넷", "IoT", "보안", "ICT", "SW", "소프트웨어", "IT서비스", "유지보수"]
 exclude = ["채용", "행사", "교육", "경진대회", "복지", "문화", "비관련 제조 일반"]
 
 [storage]
@@ -268,6 +283,7 @@ filename_pattern = "run_{run_date}.jsonl"
 [runtime]
 action = "all"
 mode = "normal"
+source_mode = "api"
 run_id_strategy = "timestamp_uuid"
 
 [validation]
@@ -282,15 +298,16 @@ require_at_least_one_source = true
 - 기본 설정 파일 경로는 `config/settings.toml`로 한다.
 - override 우선순위는 `CLI 인자 > 환경 변수 > 설정 파일 > 기본값`으로 한다.
 - 비밀값은 설정 파일에 저장하지 않고 환경 변수 또는 CI/CD secret으로 주입한다.
+- 기업마당 인증키는 `PROJECT1_BIZINFO_CERT_KEY` 환경 변수로만 주입한다.
 - 필수 설정 오류는 실행 시작 시 즉시 실패한다.
 - 1차 MVP 기본 저장소는 `sqlite`로 한다.
 - 기본 엑셀 출력 폴더는 `output`으로 한다.
 - 기본 로그 출력 폴더는 `logs`로 한다.
+- 기본 소스 입력 모드는 `api`로 하며, CLI/테스트 검증용으로 `fixture` 모드를 지원한다.
 
 ## 19. 남은 결정 사항
 
-- 실제 기업마당 API endpoint 값
+- 기업마당 API 추가 검색 필터 (`searchLclasId`, `hashtags`) 사용 여부
 - 실제 나라장터 API endpoint 값
-- API 키 필수 여부와 인증 파라미터명
 - `dry_run` 구현 여부
 - 설정 로더 구현 방식
