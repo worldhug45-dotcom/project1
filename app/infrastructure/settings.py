@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import tomllib
 from dataclasses import dataclass, field, replace
@@ -112,7 +113,7 @@ def load_settings(
 ) -> Settings:
     """Load settings using CLI > env > file > defaults precedence."""
 
-    environment = environ or os.environ
+    environment = os.environ if environ is None else environ
     settings = Settings()
     if config_path and config_path.exists():
         settings = _merge_dict(settings, _read_toml(config_path))
@@ -129,13 +130,34 @@ def load_settings(
     return settings
 
 
+def load_settings_without_keyword_override(
+    config_path: Path | None = None,
+    *,
+    cli_overrides: dict[str, str] | None = None,
+    environ: dict[str, str] | None = None,
+) -> Settings:
+    """Load settings while skipping the keyword override file."""
+
+    environment = os.environ if environ is None else environ
+    settings = Settings()
+    if config_path and config_path.exists():
+        settings = _merge_dict(settings, _read_toml(config_path))
+    elif config_path and not config_path.exists():
+        raise ConfigurationError(f"Config file does not exist: {config_path}")
+
+    settings = _apply_env(settings, environment)
+    settings = _apply_cli(settings, cli_overrides or {})
+    validate_settings(settings)
+    return settings
+
+
 def resolve_keyword_override_path(
     config_path: Path | None = None,
     environ: dict[str, str] | None = None,
 ) -> Path | None:
     """Return the user keyword override file when it exists."""
 
-    environment = environ or os.environ
+    environment = os.environ if environ is None else environ
     if KEYWORDS_OVERRIDE_PATH_ENV_VAR in environment:
         override_path = Path(environment[KEYWORDS_OVERRIDE_PATH_ENV_VAR])
         if not override_path.exists():
@@ -153,6 +175,149 @@ def resolve_keyword_override_path(
     if default_candidate.exists():
         return default_candidate
     return None
+
+
+def resolve_keyword_override_write_path(
+    config_path: Path | None = None,
+    environ: dict[str, str] | None = None,
+) -> Path:
+    """Return the keyword override path that should be updated or created."""
+
+    environment = os.environ if environ is None else environ
+    if KEYWORDS_OVERRIDE_PATH_ENV_VAR in environment:
+        override_value = environment[KEYWORDS_OVERRIDE_PATH_ENV_VAR].strip()
+        if not override_value:
+            raise ConfigurationError(
+                f"{KEYWORDS_OVERRIDE_PATH_ENV_VAR} must not be empty."
+            )
+        return Path(override_value)
+
+    if config_path is not None:
+        return config_path.with_name(DEFAULT_KEYWORDS_OVERRIDE_FILENAME)
+
+    existing_path = resolve_keyword_override_path(config_path, environment)
+    if existing_path is not None:
+        return existing_path
+    return Path("config") / DEFAULT_KEYWORDS_OVERRIDE_FILENAME
+
+
+def save_supporting_keyword_override(
+    config_path: Path,
+    supporting_keywords: list[str] | tuple[str, ...],
+    *,
+    environ: dict[str, str] | None = None,
+) -> Path:
+    """Persist supporting keyword changes using the existing override structure."""
+
+    environment = os.environ if environ is None else environ
+    normalized_supporting = _unique_keywords(supporting_keywords)
+    if not normalized_supporting:
+        raise ConfigurationError("Supporting keywords must not be empty.")
+
+    base_settings = load_settings_without_keyword_override(
+        config_path,
+        cli_overrides={"action": "export"},
+        environ=environment,
+    )
+    base_supporting = tuple(base_settings.keywords.supporting)
+    override_path = resolve_keyword_override_write_path(config_path, environment)
+    override_raw = _read_keyword_override_table(override_path)
+
+    keyword_override = {
+        "add_core": list(_keyword_list(override_raw.get("add_core", []))),
+        "add_supporting": list(_diff_added_keywords(base_supporting, normalized_supporting)),
+        "add_exclude": list(_keyword_list(override_raw.get("add_exclude", []))),
+        "remove_core": list(_keyword_list(override_raw.get("remove_core", []))),
+        "remove_supporting": list(
+            _diff_removed_keywords(base_supporting, normalized_supporting)
+        ),
+        "remove_exclude": list(_keyword_list(override_raw.get("remove_exclude", []))),
+    }
+
+    override_path.parent.mkdir(parents=True, exist_ok=True)
+    override_path.write_text(
+        _render_keyword_override_toml(keyword_override),
+        encoding="utf-8",
+    )
+    return override_path
+
+
+def save_core_keyword_override(
+    config_path: Path,
+    core_keywords: list[str] | tuple[str, ...],
+    *,
+    environ: dict[str, str] | None = None,
+) -> Path:
+    """Persist core keyword changes using the existing override structure."""
+
+    environment = os.environ if environ is None else environ
+    normalized_core = _unique_keywords(core_keywords)
+    if not normalized_core:
+        raise ConfigurationError("Core keywords must not be empty.")
+
+    base_settings = load_settings_without_keyword_override(
+        config_path,
+        cli_overrides={"action": "export"},
+        environ=environment,
+    )
+    base_core = tuple(base_settings.keywords.core)
+    override_path = resolve_keyword_override_write_path(config_path, environment)
+    override_raw = _read_keyword_override_table(override_path)
+
+    keyword_override = {
+        "add_core": list(_diff_added_keywords(base_core, normalized_core)),
+        "add_supporting": list(_keyword_list(override_raw.get("add_supporting", []))),
+        "add_exclude": list(_keyword_list(override_raw.get("add_exclude", []))),
+        "remove_core": list(_diff_removed_keywords(base_core, normalized_core)),
+        "remove_supporting": list(_keyword_list(override_raw.get("remove_supporting", []))),
+        "remove_exclude": list(_keyword_list(override_raw.get("remove_exclude", []))),
+    }
+
+    override_path.parent.mkdir(parents=True, exist_ok=True)
+    override_path.write_text(
+        _render_keyword_override_toml(keyword_override),
+        encoding="utf-8",
+    )
+    return override_path
+
+
+def save_exclude_keyword_override(
+    config_path: Path,
+    exclude_keywords: list[str] | tuple[str, ...],
+    *,
+    environ: dict[str, str] | None = None,
+) -> Path:
+    """Persist exclude keyword changes using the existing override structure."""
+
+    environment = os.environ if environ is None else environ
+    normalized_exclude = _unique_keywords(exclude_keywords)
+    if not normalized_exclude:
+        raise ConfigurationError("Exclude keywords must not be empty.")
+
+    base_settings = load_settings_without_keyword_override(
+        config_path,
+        cli_overrides={"action": "export"},
+        environ=environment,
+    )
+    base_exclude = tuple(base_settings.keywords.exclude)
+    override_path = resolve_keyword_override_write_path(config_path, environment)
+    override_raw = _read_keyword_override_table(override_path)
+
+    keyword_override = {
+        "add_core": list(_keyword_list(override_raw.get("add_core", []))),
+        "add_supporting": list(_keyword_list(override_raw.get("add_supporting", []))),
+        "add_exclude": list(_diff_added_keywords(base_exclude, normalized_exclude)),
+        "remove_core": list(_keyword_list(override_raw.get("remove_core", []))),
+        "remove_supporting": list(_keyword_list(override_raw.get("remove_supporting", []))),
+        "remove_exclude": list(_diff_removed_keywords(base_exclude, normalized_exclude)),
+    }
+
+    override_path.parent.mkdir(parents=True, exist_ok=True)
+    override_path.write_text(
+        _render_keyword_override_toml(keyword_override),
+        encoding="utf-8",
+    )
+    return override_path
 
 
 def validate_settings(settings: Settings) -> None:
@@ -234,6 +399,16 @@ def validate_settings(settings: Settings) -> None:
 def _read_toml(path: Path) -> dict[str, Any]:
     with path.open("rb") as file:
         return tomllib.load(file)
+
+
+def _read_keyword_override_table(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    raw = _read_toml(path)
+    override_raw = raw.get("keywords_override", {})
+    if not isinstance(override_raw, dict):
+        raise ConfigurationError("keywords_override must be a TOML table.")
+    return override_raw
 
 
 def _apply_keyword_override_file(settings: Settings, path: Path) -> Settings:
@@ -499,3 +674,49 @@ def _remove_keywords(base: tuple[str, ...], removals: tuple[str, ...]) -> tuple[
 
 def _normalize_keyword(value: Any) -> str:
     return str(value).strip()
+
+
+def _unique_keywords(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for keyword in _keyword_list(values):
+        key = keyword.casefold()
+        if key in seen:
+            continue
+        unique.append(keyword)
+        seen.add(key)
+    return tuple(unique)
+
+
+def _diff_added_keywords(
+    base: tuple[str, ...],
+    target: tuple[str, ...],
+) -> tuple[str, ...]:
+    base_keys = {keyword.casefold() for keyword in base}
+    return tuple(keyword for keyword in target if keyword.casefold() not in base_keys)
+
+
+def _diff_removed_keywords(
+    base: tuple[str, ...],
+    target: tuple[str, ...],
+) -> tuple[str, ...]:
+    target_keys = {keyword.casefold() for keyword in target}
+    return tuple(keyword for keyword in base if keyword.casefold() not in target_keys)
+
+
+def _render_keyword_override_toml(keyword_override: dict[str, list[str]]) -> str:
+    lines = ["[keywords_override]"]
+    for key in (
+        "add_core",
+        "add_supporting",
+        "add_exclude",
+        "remove_core",
+        "remove_supporting",
+        "remove_exclude",
+    ):
+        values = ", ".join(
+            json.dumps(keyword, ensure_ascii=False)
+            for keyword in keyword_override.get(key, [])
+        )
+        lines.append(f"{key} = [{values}]")
+    return "\n".join(lines) + "\n"

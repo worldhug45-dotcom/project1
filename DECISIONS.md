@@ -246,3 +246,65 @@
 - Context: 나라장터는 입찰공고정보서비스 내부에서도 물품, 공사, 용역 등 세부 endpoint가 갈라져 있고, 1차 MVP의 AI/인프라/SI 범위에는 용역 공고가 가장 직접적으로 맞닿아 있다. 현재 collect orchestration은 단일 source 실행 기준이므로, 먼저 fixture와 parser/normalizer를 안정화한 뒤 실제 API skeleton을 잇는 편이 안전하다.
 - Decision: 나라장터 1차 수집은 `getBidPblancListInfoServc` 계열 용역 입찰공고 endpoint를 기준으로 구현한다. Infrastructure 계층에는 `G2BNoticeRaw`, parser, `G2BFixtureSourceAdapter`, `G2BApiHttpClient`, `G2BSourceAdapter`, `G2BNoticeNormalizer`를 추가하고, 서비스키는 `PROJECT1_G2B_API_KEY` 환경 변수로만 주입한다. collect는 현재 단계에서 한 번에 하나의 enabled source만 실행하도록 두고, `sources.bizinfo` 또는 `sources.g2b` 중 하나를 선택해 기존 repository/export 흐름을 재사용한다.
 - Consequences: 나라장터 fixture 데이터를 `Notice`로 정규화하고 SQLite 저장과 export 흐름에 연결할 준비가 갖춰진다. 반면 bizinfo와 g2b 동시 collect orchestration은 이후 단계의 확장 작업으로 남는다.
+## 2026-04-21 - 웹 운영자 대시보드 1단계는 읽기 전용 status shell로 시작한다
+
+- Status: Accepted
+- Context: 현재 내부 운영형 솔루션은 CLI와 `manual_run.py`를 기준으로 상태 요약과 결과물 경로를 안정적으로 제공하고 있다. 웹 대시보드를 붙이되, 실행 버튼까지 한 번에 넣기보다 현재 상태 조회를 먼저 웹으로 노출하는 편이 구조적으로 안전하다.
+- Decision: 웹 1단계는 `app.presentation.web`에 읽기 전용 대시보드 shell을 추가하고 `GET /`와 `GET /api/status`만 제공한다. status 조합 로직은 `app.ops.operator_status`로 추출해 CLI와 웹이 동일한 상태 스냅샷을 공유한다.
+- Consequences: 기존 CLI/manual runner 흐름은 그대로 유지되고, 웹은 Presentation 계층에서 상태 조회만 담당한다. 다음 단계에서는 동일한 상태 모델 위에 collect/export/observe 버튼과 action endpoint를 추가할 수 있다.
+
+## 2026-04-21 - 웹 운영자 대시보드 2단계는 collect 단일 실행 제어만 추가한다
+
+- Status: Accepted
+- Context: 웹 1단계 read-only shell이 안정화되었고, 다음 단계에서는 운영자가 브라우저에서 최소 한 가지 실행 작업을 직접 시작할 수 있어야 한다. 하지만 collect/export/observe를 한 번에 모두 붙이면 범위가 커지고, 기존 CLI 흐름과의 회귀 위험도 함께 커진다.
+- Decision: 웹 2단계에서는 `collect`만 단일 action으로 추가한다. `POST /actions/collect`는 새 수집 엔진을 만들지 않고 기존 `manual_run.py collect` 경로를 subprocess gateway로 재사용한다. 웹 프로세스 내부에는 중복 실행을 막는 최소 collect control service만 두고, 상태 표시는 `idle`, `running`, `finished`, `failed`로 제한한다.
+- Consequences: 웹은 orchestration만 담당하고 collect 본 로직은 기존 CLI 경로를 그대로 재사용한다. collect 실행 결과는 대시보드 내부의 별도 요약 영역에만 표시되며, 이후 export/observe도 같은 패턴의 gateway + control service로 확장할 수 있다.
+
+## 2026-04-21 - 웹 운영자 대시보드 3단계는 export 단일 실행 제어만 추가한다
+
+- Status: Accepted
+- Context: collect 웹 제어가 안정화되었고, 다음으로 운영자가 결과물을 브라우저에서 바로 생성할 수 있어야 한다. 하지만 observe까지 한 번에 붙이면 상태 모델과 UI 범위가 다시 커지므로 export만 같은 패턴으로 추가하는 편이 안전하다.
+- Decision: 웹 3단계에서는 `export`만 단일 action으로 추가한다. `POST /actions/export`는 새 export 엔진을 만들지 않고 기존 `manual_run.py export` 경로를 subprocess gateway로 재사용한다. 웹 프로세스 내부에는 중복 실행을 막는 최소 export control service만 두고, 상태 표시는 `idle`, `running`, `finished`, `failed`로 제한한다.
+- Consequences: export 결과는 대시보드 내부의 별도 요약 영역에만 표시되고, collect 제어 영역과 직접 섞이지 않는다. 이후 observe도 같은 gateway + control service 패턴으로 확장할 수 있으며, 현재 단계에서는 collect/export 간 교차 실행 제어는 도입하지 않는다.
+
+## 2026-04-21 - 웹 운영자 대시보드 4단계는 observe 단일 실행 제어만 추가한다
+
+- Status: Accepted
+- Context: collect/export 웹 제어가 안정화되었고, 다음 단계에서는 운영자가 관찰용 스냅샷 기록도 브라우저에서 직접 시작할 수 있어야 한다. observe는 결과 경로와 요약 항목이 collect/export와 다르므로 별도 제어 영역으로 분리하는 편이 안전하다.
+- Decision: 웹 4단계에서는 `observe`만 단일 action으로 추가한다. `POST /actions/observe`는 새 observe 엔진을 만들지 않고 기존 `manual_run.py observe` 경로를 subprocess gateway로 재사용한다. 웹 프로세스 내부에는 중복 실행을 막는 최소 observe control service만 두고, 상태 표시는 `idle`, `running`, `finished`, `failed`로 제한한다.
+- Consequences: observe 결과는 대시보드 내부의 별도 요약 영역에만 표시되고 collect/export 제어와 직접 섞이지 않는다. 웹은 orchestration만 담당하고 observation 생성 로직은 기존 CLI 경로를 그대로 재사용한다.
+
+## 2026-04-21 - 웹 운영자 대시보드 5단계는 읽기 전용 health endpoint를 표준 상태 점검 기준으로 둔다
+
+- Status: Accepted
+- Context: 웹 대시보드와 Docker 배포를 운영하려면 서버 생존 여부와 최소 운영 상태를 가볍게 확인할 수 있는 공통 health endpoint가 필요하다.
+- Decision: `GET /health`는 collect/export/observe를 실행하지 않는 읽기 전용 endpoint로 두고, `status`, `app_name`, `server_time`, `config_path`, `sqlite_db_path`, `export_output_dir`를 기본으로 반환한다. 추가로 `settings_loaded`, `state_file_accessible`, `observation_history_exists`를 포함해 `ok`, `degraded`, `error` 상태를 구분한다.
+- Consequences: 웹 대시보드와 Docker healthcheck가 같은 health contract를 재사용할 수 있다. 일부 상태 파일이나 관찰 기록이 없어도 서버 전체를 죽이지 않고 `degraded`로 판정할 수 있다.
+
+## 2026-04-21 - Docker 로컬 스타터는 단일 웹 컨테이너와 override 기반 api 모드로 유지한다
+
+- Status: Accepted
+- Context: 내부 운영자는 로컬에서도 웹 대시보드를 표준 방식으로 실행할 수 있어야 하고, fixture 모드와 실제 API 모드를 설정만 바꿔 전환할 수 있어야 한다.
+- Decision: Docker 배포는 기본 `compose.yaml`의 단일 `operator-web` 컨테이너로 시작하고, `config`, `data`, `output`, `doc`를 볼륨으로 연결한다. 실제 API 모드는 별도 이미지 분기 없이 `compose.api.yaml` override와 환경 변수 주입으로 전환한다. healthcheck는 `GET /health`를 그대로 사용한다.
+- Consequences: 로컬 스타터와 실제 API 모드가 같은 웹 서버와 같은 상태/실행 경로를 재사용한다. API 키는 이미지나 저장소가 아니라 환경 변수로만 주입되며, 운영 배포 보강은 이후 단계에서 Nginx나 worker 분리로 확장할 수 있다.
+
+## 2026-04-21 - 웹 운영자 대시보드 6단계는 Health Badge로 /health를 직접 보여준다
+
+- Status: Accepted
+- Context: 운영자는 대시보드에 들어오자마자 현재 서버 상태를 한눈에 확인할 수 있어야 한다. 경로와 최근 상태 정보만으로는 설정 로드 실패나 state file 접근 문제를 빠르게 구분하기 어렵다.
+- Decision: 대시보드 상단에 Health Badge를 추가하고, 프런트엔드는 `GET /health`를 별도로 읽어 `ok`, `degraded`, `error` 상태를 시각적으로 표시한다. Badge 옆에는 `app_name`, `server_time`, `settings_loaded`, `state_file_accessible`, `observation_history_exists`만 최소 요약으로 표시한다.
+- Consequences: 운영자는 collect/export/observe를 실행하기 전에 서버 상태를 즉시 판단할 수 있다. `/health`는 읽기 전용으로 유지되고, 실행 제어 로직과 직접 결합되지 않는다.
+
+## 2026-04-21 - 웹 운영자 대시보드 7단계는 키워드 snapshot을 읽기 전용으로 먼저 노출한다
+
+- Status: Accepted
+- Context: 내부 사용자는 현재 어떤 키워드 세트가 적용되고 있는지 먼저 확인할 수 있어야 하며, 바로 편집 기능부터 붙이면 override 우선순위와 로드 경로를 이해하기 어려워질 수 있다.
+- Decision: 키워드 관리는 먼저 읽기 전용 `GET /api/keywords` endpoint와 Keyword Panel로 노출한다. 이 endpoint는 기존 settings loader와 override 구조를 재사용해 `core`, `supporting`, `exclude`, override 경로, override 파일 존재 여부, 마지막 로드 경로, 적용 키워드 개수를 반환한다.
+- Consequences: 웹 대시보드는 collect/export/observe/status/health와 같은 화면에서 현재 유효 키워드 세트를 설명할 수 있다. 이후 편집 기능을 붙여도 기존 settings/override 우선순위 구조를 그대로 유지할 수 있다.
+
+## 2026-04-21 - 웹 운영자 대시보드 8단계는 supporting 키워드만 override 파일에 저장 가능하게 한다
+
+- Status: Accepted
+- Context: 내부 운영자는 웹에서 가장 자주 조정하는 키워드 집합을 최소 범위로 편집할 수 있어야 하지만, 핵심 키워드와 제외 키워드까지 한 번에 열면 범위와 위험이 커진다.
+- Decision: 웹 8단계에서는 supporting 키워드만 편집 가능하게 두고, `POST /api/keywords/supporting`이 기존 `keywords.override.toml` 구조를 유지한 채 `add_supporting` / `remove_supporting`만 다시 계산해 저장한다. `core`, `exclude`는 계속 읽기 전용으로 두고, 중복/빈 문자열/공백-only 입력은 저장하지 않는다.
+- Consequences: 운영자는 코드 수정 없이 supporting 키워드를 웹에서 추가/삭제하고 즉시 저장할 수 있다. 반면 핵심/제외 키워드 변경은 여전히 통제된 후속 단계로 남겨 두어 운영 리스크를 줄인다.

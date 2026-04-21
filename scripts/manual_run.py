@@ -7,7 +7,6 @@ import json
 import os
 import subprocess
 import sys
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +21,14 @@ from app.infrastructure.settings import (
     load_settings,
     resolve_keyword_override_path,
 )
-from app.ops import CollectObservationRecord, load_observation_history
+from app.ops import CollectObservationRecord
+from app.ops import (
+    latest_file,
+    latest_observation_record,
+    load_operator_status_snapshot,
+    now_isoformat,
+    persist_action_state,
+)
 from scripts.observe_bizinfo_collect import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_HISTORY_PATH,
@@ -114,12 +120,12 @@ def main(argv: list[str] | None = None) -> int:
             ),
         )
         _print_section("details", (("error", str(exc)),))
-        _persist_action_state(
+        persist_action_state(
             args.state_path,
             args.action,
             {
                 "status": "config_error",
-                "recorded_at": _now_isoformat(),
+                "recorded_at": now_isoformat(),
                 "config_path": str(args.config),
                 "keyword_override_path": "not loaded",
             },
@@ -171,7 +177,7 @@ def _run_collect_or_export(
             keyword_override_path=keyword_override_path,
             status_label="failed",
         )
-        _persist_action_state(
+        persist_action_state(
             args.state_path,
             args.action,
             _collect_or_export_state_payload(
@@ -203,12 +209,12 @@ def _run_collect_or_export(
                 ("state_path", args.state_path),
             ),
         )
-        _persist_action_state(
+        persist_action_state(
             args.state_path,
             args.action,
             {
                 "status": "summary_missing",
-                "recorded_at": _now_isoformat(),
+                "recorded_at": now_isoformat(),
                 "config_path": str(args.config),
                 "keyword_override_path": _display_path(keyword_override_path),
             },
@@ -228,7 +234,7 @@ def _run_collect_or_export(
         keyword_override_path=keyword_override_path,
         status_label="success",
     )
-    _persist_action_state(
+    persist_action_state(
         args.state_path,
         args.action,
         _collect_or_export_state_payload(
@@ -266,8 +272,8 @@ def _run_observe(
         args.source_mode or settings.runtime.source_mode,
     ]
     completed = _run_subprocess(command)
-    latest_observation = _latest_observation_record(args.history_path)
-    latest_raw_jsonl = _latest_file(args.raw_output_dir, "*.jsonl")
+    latest_observation = latest_observation_record(args.history_path)
+    latest_raw_jsonl = latest_file(args.raw_output_dir, "*.jsonl")
     if completed.returncode != 0:
         _print_process_output(completed)
         print()
@@ -278,7 +284,7 @@ def _run_observe(
             latest_raw_jsonl=latest_raw_jsonl,
             status_label="failed",
         )
-        _persist_action_state(
+        persist_action_state(
             args.state_path,
             "observe",
             _observe_state_payload(
@@ -303,7 +309,7 @@ def _run_observe(
         latest_raw_jsonl=latest_raw_jsonl,
         status_label="success",
     )
-    _persist_action_state(
+    persist_action_state(
         args.state_path,
         "observe",
         _observe_state_payload(
@@ -322,41 +328,20 @@ def _run_status(
     settings,
     keyword_override_path: Path | None,
 ) -> int:
-    latest_xlsx = _latest_file(settings.export.output_dir, "*.xlsx")
-    latest_raw_jsonl = _latest_file(args.raw_output_dir, "*.jsonl")
-    latest_observation = _latest_observation_record(args.history_path)
-    manual_state = _load_manual_state(args.state_path)
-    recent_collect = _recent_collect_state(manual_state, latest_observation)
-    recent_export = _recent_export_state(manual_state, latest_xlsx)
-    recent_observe = _recent_observe_state(manual_state, latest_observation, latest_raw_jsonl)
+    snapshot = load_operator_status_snapshot(
+        config_path=args.config,
+        history_path=args.history_path,
+        raw_output_dir=args.raw_output_dir,
+        log_path=args.log_path,
+        state_path=args.state_path,
+    )
 
     _print_action_header("status", "ready")
-    _print_section(
-        "current_paths",
-        (
-            ("config_path", args.config),
-            ("keyword_override_path", _display_path(keyword_override_path)),
-            ("sqlite_db_path", settings.storage.database_path),
-            ("export_output_dir", settings.export.output_dir),
-            ("latest_exported_file_path", _display_path(latest_xlsx)),
-            ("observation_history_path", args.history_path),
-            ("observation_report_path", args.log_path),
-            ("observation_raw_jsonl_dir", args.raw_output_dir),
-            ("state_path", args.state_path),
-        ),
-    )
-    _print_state_section("recent_collect", recent_collect)
-    _print_state_section("recent_export", recent_export)
-    _print_state_section("recent_observe", recent_observe)
-    _print_section(
-        "launchers",
-        (
-            ("status_launcher", "scripts/run_status.ps1"),
-            ("collect_launcher", "scripts/run_collect.ps1"),
-            ("export_launcher", "scripts/run_export.ps1"),
-            ("observe_launcher", "scripts/run_observe.ps1"),
-        ),
-    )
+    _print_section("current_paths", tuple(snapshot.current_paths.items()))
+    _print_state_section("recent_collect", snapshot.recent_collect)
+    _print_state_section("recent_export", snapshot.recent_export)
+    _print_state_section("recent_observe", snapshot.recent_observe)
+    _print_section("launchers", tuple(snapshot.launchers.items()))
     return 0
 
 
@@ -372,7 +357,7 @@ def _collect_or_export_state_payload(
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": status,
-        "recorded_at": _now_isoformat(),
+        "recorded_at": now_isoformat(),
         "config_path": str(config_path),
         "keyword_override_path": _display_path(keyword_override_path),
         "db_path": str(settings.storage.database_path),
@@ -395,9 +380,13 @@ def _collect_or_export_state_payload(
     if isinstance(exported_files, list):
         payload["exported_files"] = [str(item) for item in exported_files]
         payload["exported_file_count"] = len(exported_files)
+        payload["exported_file_path"] = (
+            str(exported_files[0]) if exported_files else "not available"
+        )
     else:
         payload["exported_files"] = []
         payload["exported_file_count"] = 0
+        payload["exported_file_path"] = "not available"
     return payload
 
 
@@ -411,7 +400,7 @@ def _observe_state_payload(
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": status,
-        "recorded_at": _now_isoformat(),
+        "recorded_at": now_isoformat(),
         "config_path": str(args.config),
         "keyword_override_path": _display_path(keyword_override_path),
         "observation_history_path": str(args.history_path),
@@ -579,114 +568,6 @@ def _settings_action_for(action: str) -> str:
     return action
 
 
-def _load_manual_state(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {"actions": {}}
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        return {"actions": {}}
-    actions = raw.get("actions")
-    if not isinstance(actions, dict):
-        raw["actions"] = {}
-    return raw
-
-
-def _persist_action_state(path: Path, action: str, payload: dict[str, Any]) -> None:
-    state = _load_manual_state(path)
-    actions = state.setdefault("actions", {})
-    actions[action] = payload
-    state["updated_at"] = _now_isoformat()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def _latest_observation_record(path: Path) -> CollectObservationRecord | None:
-    records = load_observation_history(path)
-    if not records:
-        return None
-    return max(records, key=lambda item: (item.observed_on, item.run_id))
-
-
-def _latest_file(directory: Path, pattern: str) -> Path | None:
-    if not directory.exists():
-        return None
-    files = [path for path in directory.glob(pattern) if path.is_file()]
-    if not files:
-        return None
-    return max(files, key=lambda item: item.stat().st_mtime)
-
-
-def _recent_collect_state(
-    manual_state: dict[str, Any],
-    latest_observation: CollectObservationRecord | None,
-) -> dict[str, Any] | None:
-    actions = manual_state.get("actions", {})
-    state = actions.get("collect")
-    if isinstance(state, dict):
-        return state
-    if latest_observation is None:
-        return None
-    return {
-        "status": latest_observation.status,
-        "recorded_at": latest_observation.observed_on,
-        "run_id": latest_observation.run_id,
-        "fetched_count": latest_observation.fetched_count,
-        "saved_count": latest_observation.saved_count,
-        "skipped_count": latest_observation.skipped_count,
-        "error_count": latest_observation.error_count,
-        "source": "observation_history_fallback",
-    }
-
-
-def _recent_export_state(
-    manual_state: dict[str, Any],
-    latest_xlsx: Path | None,
-) -> dict[str, Any] | None:
-    actions = manual_state.get("actions", {})
-    state = actions.get("export")
-    if isinstance(state, dict):
-        return state
-    if latest_xlsx is None:
-        return None
-    return {
-        "status": "available",
-        "recorded_at": _mtime_isoformat(latest_xlsx),
-        "exported_file_count": 1,
-        "exported_file_path": str(latest_xlsx),
-        "source": "filesystem_fallback",
-    }
-
-
-def _recent_observe_state(
-    manual_state: dict[str, Any],
-    latest_observation: CollectObservationRecord | None,
-    latest_raw_jsonl: Path | None,
-) -> dict[str, Any] | None:
-    actions = manual_state.get("actions", {})
-    state = actions.get("observe")
-    if isinstance(state, dict):
-        return state
-    if latest_observation is None and latest_raw_jsonl is None:
-        return None
-    payload: dict[str, Any] = {
-        "status": latest_observation.status if latest_observation is not None else "available",
-        "recorded_at": latest_observation.observed_on if latest_observation is not None else _mtime_isoformat(latest_raw_jsonl),
-        "source": "observation_history_fallback",
-        "latest_raw_jsonl_path": _display_path(latest_raw_jsonl),
-    }
-    if latest_observation is not None:
-        payload.update(
-            {
-                "run_id": latest_observation.run_id,
-                "fetched_count": latest_observation.fetched_count,
-                "saved_count": latest_observation.saved_count,
-                "skipped_count": latest_observation.skipped_count,
-                "error_count": latest_observation.error_count,
-            }
-        )
-    return payload
-
-
 def _run_subprocess(command: list[str]) -> subprocess.CompletedProcess[str]:
     child_environ = os.environ.copy()
     child_environ["PYTHONIOENCODING"] = "utf-8"
@@ -738,17 +619,6 @@ def _display_path(path: Path | None) -> str:
     if path is None:
         return "not available"
     return str(path)
-
-
-def _mtime_isoformat(path: Path | None) -> str:
-    if path is None:
-        return "not available"
-    return datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
-
-
-def _now_isoformat() -> str:
-    return datetime.now(UTC).isoformat()
-
 
 if __name__ == "__main__":
     raise SystemExit(main())

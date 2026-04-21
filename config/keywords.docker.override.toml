@@ -1,0 +1,7 @@
+[keywords_override]
+add_core = []
+add_supporting = []
+add_exclude = []
+remove_core = []
+remove_supporting = []
+remove_exclude = []

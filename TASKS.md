@@ -256,13 +256,13 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] 글래스모피즘 디자인 가이드 정의
 - [x] Docker Compose 배포 구조 초안 문서화
 - [x] 구현용 TODO와 권장 구현 순서 정리
-- [ ] 웹 Presentation shell 구현
-- [ ] `GET /api/status` 상태 조회 endpoint 구현
-- [ ] `collect` 웹 액션 연결
-- [ ] `export` 웹 액션 연결
-- [ ] `observe` 웹 액션 연결
-- [ ] 웹 전용 job registry 또는 실행 중 상태 표시 구조 구현
-- [ ] `/health` endpoint와 Docker healthcheck 구현
+- [x] 웹 Presentation shell 구현
+- [x] `GET /api/status` 상태 조회 endpoint 구현
+- [x] `collect` 웹 액션 연결
+- [x] `export` 웹 액션 연결
+- [x] `observe` 웹 액션 연결
+- [x] 웹 전용 job registry 또는 실행 중 상태 표시 구조 구현
+- [x] `/health` endpoint와 Docker healthcheck 구현
 
 ## 16단계: 나라장터 1차 수집 경로
 
@@ -278,3 +278,106 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] `settings.sources.g2b`와 실제 구현 연결
 - [ ] 나라장터 실제 API 수동 collect 검증
 - [ ] bizinfo + g2b 다중 source collect orchestration 확장
+## 17단계: 웹 운영자 대시보드 1단계
+
+- [x] 웹 app 폴더 구조 추가
+- [x] `app.presentation.web` Presentation shell 추가
+- [x] 글래스모피즘 스타일의 단일 운영자 status 화면 초안 구현
+- [x] `GET /api/status` 읽기 전용 상태 조회 endpoint 구현
+- [x] `manual_run.py` status 조합 로직을 공용 status 서비스로 추출
+- [x] config / keyword override / sqlite / export / observation 경로를 웹에 표시
+- [x] 최근 collect / export / observe 상태 요약을 웹에 표시
+- [x] `scripts/run_dashboard.ps1` launcher 추가
+- [x] collect / export / observe 실행 버튼 연결
+- [x] `/health` endpoint 및 Docker healthcheck 연결
+
+## 18단계: 웹 운영자 대시보드 2단계
+
+- [x] 웹 화면에 collect 실행 버튼 1개 추가
+- [x] `POST /actions/collect` endpoint 구현
+- [x] collect 실행 orchestration용 공용 서비스 추가
+- [x] 기존 `manual_run.py collect` 흐름을 subprocess gateway로 재사용
+- [x] 같은 서버 프로세스 내 중복 collect 실행 방지
+- [x] collect 상태 `idle` / `running` / `finished` / `failed` 표시
+- [x] collect 결과 요약 6개 항목 표시
+- [x] `status`, `fetched_count`, `saved_count`, `skipped_count`, `error_count`, `db_path`
+- [x] collect 완료 후 `GET /api/status` 최신 상태 반영
+- [x] collect action 웹 테스트 작성
+- [x] export 웹 액션 연결
+- [x] observe 웹 액션 연결
+
+## 19단계: 웹 운영자 대시보드 3단계
+
+- [x] 웹 화면에 export 실행 버튼 1개 추가
+- [x] `POST /actions/export` endpoint 구현
+- [x] export 실행 orchestration용 공용 서비스 추가
+- [x] 기존 `manual_run.py export` 흐름을 subprocess gateway로 재사용
+- [x] 같은 서버 프로세스 내 중복 export 실행 방지
+- [x] export 상태 `idle` / `running` / `finished` / `failed` 표시
+- [x] export 결과 요약 4개 항목 표시
+- [x] `status`, `exported_file_count`, `exported_file_path`, `export_output_dir`
+- [x] export 완료 후 `GET /api/status` 최신 상태 반영
+- [x] latest exported file 경로와 최근 export 상태 갱신 확인
+- [x] export action 웹 테스트 작성
+- [x] observe 웹 액션 연결
+
+## 20단계: 웹 운영자 대시보드 4단계
+
+- [x] 웹 화면에 observe 실행 버튼 1개 추가
+- [x] `POST /actions/observe` endpoint 구현
+- [x] observe 실행 orchestration용 공용 서비스 추가
+- [x] 기존 `manual_run.py observe` 흐름을 subprocess gateway로 재사용
+- [x] 같은 서버 프로세스 내 중복 observe 실행 방지
+- [x] observe 상태 `idle` / `running` / `finished` / `failed` 표시
+- [x] observe 결과 요약 10개 항목 표시
+- [x] `status`, `run_id`, `observed_on`, `fetched_count`, `saved_count`, `skipped_count`, `error_count`, `observation_history_path`, `observation_report_path`, `latest_raw_jsonl_path`
+- [x] observe 완료 후 `GET /api/status` 최신 상태 반영
+- [x] observe action 웹 테스트 작성
+
+## 21단계: 웹 운영자 대시보드 5단계
+
+- [x] `GET /health` endpoint 구현
+- [x] `/health`가 웹 서버 생존 여부와 최소 운영 상태를 JSON으로 반환
+- [x] `status`, `app_name`, `server_time`, `config_path`, `sqlite_db_path`, `export_output_dir` 반환
+- [x] `settings_loaded`, `state_file_accessible`, `observation_history_exists` 보조 상태 반환
+- [x] 일부 상태 누락 시 `degraded` 또는 `error`로 응답
+- [x] health endpoint 웹 테스트 작성
+
+## 22단계: Docker Compose 로컬/실 API 모드
+
+- [x] 웹 서버용 `Dockerfile` 추가
+- [x] 기본 `compose.yaml` 로컬 starter 추가
+- [x] `compose.api.yaml` override 추가
+- [x] `config`, `data`, `output`, `doc` 볼륨 연결
+- [x] `PROJECT1_BIZINFO_CERT_KEY`, `PROJECT1_G2B_API_KEY`, `PROJECT1_KEYWORDS_OVERRIDE_PATH`, `PROJECT1_STORAGE_DATABASE_PATH`, `PROJECT1_EXPORT_OUTPUT_DIR` 환경 변수 구조 정리
+- [x] `/health`를 Docker healthcheck에 연결
+- [x] fixture 모드 / api 모드 Docker 실행 문서 작성
+- [x] Docker 구성 검증 테스트 작성
+
+## 23단계: 웹 운영자 대시보드 6단계
+
+- [x] 대시보드 상단 Health Badge 추가
+- [x] 프런트엔드가 `GET /health`를 읽어 `ok` / `degraded` / `error` 상태 표시
+- [x] `app_name`, `server_time`, `settings_loaded`, `state_file_accessible`, `observation_history_exists` 요약 표시
+- [x] 상태별 시각 표현 분리
+- [x] Health Badge 프런트엔드 contract 테스트 반영
+
+## 24단계: 웹 운영자 대시보드 7단계
+
+- [x] 읽기 전용 Keyword Panel 추가
+- [x] `GET /api/keywords` endpoint 구현
+- [x] 현재 keyword override 파일 경로와 존재 여부 표시
+- [x] `core`, `supporting`, `exclude` 키워드 그룹 표시
+- [x] 적용 중인 키워드 개수와 마지막 로드 경로 표시
+- [x] Keyword Panel 웹 테스트 작성
+
+## 25단계: 웹 운영자 대시보드 8단계
+
+- [x] supporting 키워드 편집 UI 추가
+- [x] `POST /api/keywords/supporting` endpoint 구현
+- [x] supporting 키워드 신규 추가 / 삭제 / 저장 기능 구현
+- [x] `keywords.override.toml` 기존 구조를 유지한 저장 로직 구현
+- [x] 중복 / 빈 문자열 / 공백-only 입력 검증
+- [x] 저장 후 `/api/keywords` 최신 supporting 상태 반영
+- [x] core / exclude 키워드는 계속 읽기 전용 유지
+- [x] supporting 키워드 저장 웹 테스트 작성

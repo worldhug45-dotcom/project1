@@ -1,0 +1,57 @@
+[app]
+name = "project1"
+env = "local"
+timezone = "Asia/Seoul"
+
+[sources.bizinfo]
+enabled = true
+endpoint = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+fixture_path = "tests/fixtures/bizinfo/support_notices.json"
+timeout_seconds = 10
+retry_count = 3
+retry_backoff_seconds = 2
+page_size = 20
+
+[sources.g2b]
+enabled = false
+endpoint = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
+fixture_path = "tests/fixtures/g2b/bid_notices.json"
+timeout_seconds = 10
+retry_count = 3
+retry_backoff_seconds = 2
+page_size = 20
+inquiry_division = "1"
+inquiry_window_days = 7
+
+[keywords]
+core = ["AI", "인공지능", "머신러닝", "DX", "디지털전환", "시스템 통합", "SI", "정보화"]
+supporting = ["데이터", "빅데이터", "클라우드", "서버", "네트워크", "보안", "IT서비스", "유지보수", "인프라", "IoT", "ICT", "SW", "소프트웨어"]
+exclude = ["채용", "행사", "교육", "경진대회", "복지", "문화", "비기술 제조 일반"]
+
+[storage]
+type = "sqlite"
+database_path = "data/notices.sqlite3"
+
+[export]
+output_dir = "output"
+filename_pattern = "notices_{run_date}_{run_id}.xlsx"
+support_sheet_name = "support_notices"
+bid_sheet_name = "bid_notices"
+date_format = "%Y-%m-%d"
+
+[logging]
+level = "INFO"
+log_dir = "logs"
+format = "jsonl"
+filename_pattern = "run_{run_date}.jsonl"
+
+[runtime]
+action = "collect"
+mode = "normal"
+source_mode = "fixture"
+run_id_strategy = "timestamp_uuid"
+
+[validation]
+fail_fast = true
+allow_unknown_keys = false
+require_at_least_one_source = true

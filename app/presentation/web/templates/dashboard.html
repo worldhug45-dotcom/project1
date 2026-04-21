@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Project1 Operator Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+<body
+  data-status-url="__STATUS_API_URL__"
+  data-keywords-url="__KEYWORDS_API_URL__"
+  data-keywords-core-save-url="__KEYWORDS_CORE_SAVE_URL__"
+  data-keywords-supporting-save-url="__KEYWORDS_SUPPORTING_SAVE_URL__"
+  data-keywords-exclude-save-url="__KEYWORDS_EXCLUDE_SAVE_URL__"
+  data-health-url="__HEALTH_API_URL__"
+  data-collect-url="__COLLECT_ACTION_URL__"
+  data-export-url="__EXPORT_ACTION_URL__"
+  data-observe-url="__OBSERVE_ACTION_URL__"
+>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="ambient ambient-c"></div>
+
+  <main class="dashboard-shell">
+    <section class="health-strip glass-panel">
+      <div class="health-strip-head">
+        <div>
+          <p class="section-kicker">Health Snapshot</p>
+          <h2 class="health-title">Operator Runtime Health</h2>
+        </div>
+        <span id="health-badge" class="status-pill status-neutral">loading</span>
+      </div>
+      <div class="health-summary-grid">
+        <article class="health-item">
+          <span class="label">App name</span>
+          <strong id="health-app-name">Loading...</strong>
+        </article>
+        <article class="health-item">
+          <span class="label">Server time</span>
+          <strong id="health-server-time">Loading...</strong>
+        </article>
+        <article class="health-item">
+          <span class="label">Settings loaded</span>
+          <strong id="health-settings-loaded">Loading...</strong>
+        </article>
+        <article class="health-item">
+          <span class="label">State file</span>
+          <strong id="health-state-file-accessible">Loading...</strong>
+        </article>
+        <article class="health-item">
+          <span class="label">Observation history</span>
+          <strong id="health-observation-history-exists">Loading...</strong>
+        </article>
+      </div>
+    </section>
+
+    <header class="hero glass-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Internal Operator Cockpit</p>
+        <h1 id="dashboard-title">Project1 Operator Dashboard</h1>
+        <p id="dashboard-subtitle" class="subtitle">
+          Stage 10 keeps the CLI engine as the source of truth, preserves the shared operator flow,
+          and allows core, supporting, and exclude keywords to be edited and saved through the existing override file.
+        </p>
+      </div>
+      <div class="hero-side">
+        <span id="read-only-badge" class="status-pill status-ready">COLLECT + EXPORT + OBSERVE ENABLED</span>
+        <button id="refresh-button" class="ghost-button" type="button">Refresh Status</button>
+        <p class="hint">This surface can show read-only health and keywords, then trigger collect, export, and observe while keeping the CLI engine as the shared source of truth.</p>
+      </div>
+    </header>
+
+    <section class="hero-meta glass-panel">
+      <div class="meta-group">
+        <span class="meta-label">Snapshot Updated</span>
+        <strong id="updated-at">Loading...</strong>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Mode</span>
+        <strong>Web health + keywords + collect + export + observe + shared status</strong>
+      </div>
+      <div class="meta-group">
+        <span class="meta-label">Scope</span>
+        <strong>Read-only health and keywords plus collect, export, and observe control with current paths and latest action summaries</strong>
+      </div>
+    </section>
+
+    <section id="error-banner" class="error-banner hidden" aria-live="polite"></section>
+
+    <section class="panel glass-panel keyword-panel reveal">
+      <div class="section-header keyword-header">
+        <div>
+          <p class="section-kicker">Keyword Snapshot</p>
+          <h2>Keyword Panel</h2>
+        </div>
+        <span id="keywords-status-badge" class="status-pill status-neutral">loading</span>
+      </div>
+      <p id="keywords-message" class="hint">
+        The dashboard reads the current effective keyword set from the existing settings and override structure. Core, supporting, and exclude keywords can be edited in this stage.
+      </p>
+      <div class="keyword-meta-grid">
+        <article class="keyword-meta-item">
+          <span class="label">Override path</span>
+          <strong id="keywords-override-path">Loading...</strong>
+        </article>
+        <article class="keyword-meta-item">
+          <span class="label">Override file</span>
+          <strong id="keywords-override-exists">Loading...</strong>
+        </article>
+        <article class="keyword-meta-item">
+          <span class="label">Last loaded from</span>
+          <strong id="keywords-last-loaded-path">Loading...</strong>
+        </article>
+        <article class="keyword-meta-item">
+          <span class="label">Total keywords</span>
+          <strong id="keywords-total-count">Loading...</strong>
+        </article>
+      </div>
+      <div class="keyword-groups-grid">
+        <article class="keyword-group-card keyword-group-card-editable">
+          <div class="keyword-group-head">
+            <h3>Core</h3>
+            <span id="keywords-core-count" class="status-pill status-ready">0</span>
+          </div>
+          <p class="keyword-editor-hint">
+            Add or remove core keywords, then save them back into the existing override structure.
+          </p>
+          <div class="keyword-editor-toolbar">
+            <label class="keyword-editor-input" for="keywords-core-input">
+              <span class="sr-only">Core keyword</span>
+              <input
+                id="keywords-core-input"
+                type="text"
+                placeholder="Add core keyword"
+                autocomplete="off"
+              >
+            </label>
+            <button
+              id="keywords-core-add-button"
+              class="ghost-button keyword-editor-button"
+              type="button"
+            >
+              Add
+            </button>
+            <button
+              id="keywords-core-save-button"
+              class="primary-button keyword-editor-button"
+              type="button"
+            >
+              Save
+            </button>
+          </div>
+          <p id="keywords-core-message" class="keyword-editor-message" aria-live="polite">
+            Core keywords are saved into <code>keywords.override.toml</code>. Supporting and exclude keep using their own panels.
+          </p>
+          <div id="keywords-core-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+        </article>
+        <article class="keyword-group-card keyword-group-card-editable">
+          <div class="keyword-group-head">
+            <h3>Supporting</h3>
+            <span id="keywords-supporting-count" class="status-pill status-warning">0</span>
+          </div>
+          <p class="keyword-editor-hint">
+            Add or remove supporting keywords, then save them back into the existing override structure.
+          </p>
+          <div class="keyword-editor-toolbar">
+            <label class="keyword-editor-input" for="keywords-supporting-input">
+              <span class="sr-only">Supporting keyword</span>
+              <input
+                id="keywords-supporting-input"
+                type="text"
+                placeholder="Add supporting keyword"
+                autocomplete="off"
+              >
+            </label>
+            <button
+              id="keywords-supporting-add-button"
+              class="ghost-button keyword-editor-button"
+              type="button"
+            >
+              Add
+            </button>
+            <button
+              id="keywords-supporting-save-button"
+              class="primary-button keyword-editor-button"
+              type="button"
+            >
+              Save
+            </button>
+          </div>
+          <p id="keywords-supporting-message" class="keyword-editor-message" aria-live="polite">
+            Supporting keywords are saved into <code>keywords.override.toml</code>. Core and exclude keep using their own panels.
+          </p>
+          <div id="keywords-supporting-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+        </article>
+        <article class="keyword-group-card keyword-group-card-editable">
+          <div class="keyword-group-head">
+            <h3>Exclude</h3>
+            <span id="keywords-exclude-count" class="status-pill status-error">0</span>
+          </div>
+          <p class="keyword-editor-hint">
+            Add or remove exclude keywords, then save them back into the existing override structure.
+          </p>
+          <div class="keyword-editor-toolbar">
+            <label class="keyword-editor-input" for="keywords-exclude-input">
+              <span class="sr-only">Exclude keyword</span>
+              <input
+                id="keywords-exclude-input"
+                type="text"
+                placeholder="Add exclude keyword"
+                autocomplete="off"
+              >
+            </label>
+            <button
+              id="keywords-exclude-add-button"
+              class="ghost-button keyword-editor-button"
+              type="button"
+            >
+              Add
+            </button>
+            <button
+              id="keywords-exclude-save-button"
+              class="primary-button keyword-editor-button"
+              type="button"
+            >
+              Save
+            </button>
+          </div>
+          <p id="keywords-exclude-message" class="keyword-editor-message" aria-live="polite">
+            Exclude keywords are saved into <code>keywords.override.toml</code>. Core and supporting keep using their own panels.
+          </p>
+          <div id="keywords-exclude-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="dashboard-grid control-grid">
+      <section class="panel glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Collect Control</p>
+          <h2>Single Run Execution</h2>
+        </div>
+        <div class="collect-shell">
+          <div class="collect-toolbar">
+            <span id="collect-status-badge" class="status-pill status-neutral">idle</span>
+            <button id="collect-button" class="primary-button" type="button">Run Collect</button>
+          </div>
+          <p id="collect-message" class="hint">
+            The dashboard reuses the existing manual collect flow and blocks duplicate runs in the same server process.
+          </p>
+          <div id="collect-summary" class="collect-summary"></div>
+        </div>
+      </section>
+
+      <section class="panel glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Export Control</p>
+          <h2>Single Run Execution</h2>
+        </div>
+        <div class="collect-shell">
+          <div class="collect-toolbar">
+            <span id="export-status-badge" class="status-pill status-neutral">idle</span>
+            <button id="export-button" class="primary-button" type="button">Run Export</button>
+          </div>
+          <p id="export-message" class="hint">
+            The dashboard reuses the existing manual export flow and keeps the result summary in its own panel.
+          </p>
+          <div id="export-summary" class="collect-summary"></div>
+        </div>
+      </section>
+
+      <section class="panel glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Observe Control</p>
+          <h2>Single Run Execution</h2>
+        </div>
+        <div class="collect-shell">
+          <div class="collect-toolbar">
+            <span id="observe-status-badge" class="status-pill status-neutral">idle</span>
+            <button id="observe-button" class="primary-button" type="button">Run Observe</button>
+          </div>
+          <p id="observe-message" class="hint">
+            The dashboard reuses the existing manual observe flow and keeps the observation summary in its own panel.
+          </p>
+          <div id="observe-summary" class="collect-summary"></div>
+        </div>
+      </section>
+
+      <aside class="panel panel-side glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Stage 10 Rules</p>
+          <h2>Current Boundaries</h2>
+        </div>
+        <ul class="notes-list">
+          <li><code>/health</code> is queried separately and only powers the read-only badge at the top of the dashboard.</li>
+          <li><code>/api/keywords</code> keeps powering the shared keyword snapshot, while <code>/api/keywords/core</code>, <code>/api/keywords/supporting</code>, and <code>/api/keywords/exclude</code> each save only their own keyword group changes.</li>
+          <li>Collect, export, and observe are controllable from the web shell in this stage.</li>
+          <li>The same <code>manual_run.py collect</code> path is reused instead of introducing a new engine.</li>
+          <li>The same <code>manual_run.py export</code> path is reused for export.</li>
+          <li>The same <code>manual_run.py observe</code> path is reused for observation runs.</li>
+          <li>Core, supporting, and exclude keywords can all be edited from their own panels in the dashboard.</li>
+          <li>If the same action is already active, the dashboard returns the current running state instead of starting another one.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="dashboard-grid">
+      <section class="panel panel-wide glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Active Runtime Paths</p>
+          <h2>Current Working Paths</h2>
+        </div>
+        <div id="paths-grid" class="paths-grid"></div>
+      </section>
+
+      <aside class="panel panel-side glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Operator Notes</p>
+          <h2>Shared Snapshot</h2>
+        </div>
+        <ul class="notes-list">
+          <li>CLI <code>status</code> and web <code>status</code> still share the same operator snapshot.</li>
+          <li>After collect finishes, <code>GET /api/status</code> reflects the latest collect result without replacing the rest of the dashboard.</li>
+          <li>After export finishes, the latest exported file path and recent export status are refreshed in the shared snapshot.</li>
+          <li>After observe finishes, the observation history, report, and raw JSONL paths are refreshed in the shared snapshot.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="dashboard-grid secondary-grid">
+      <section class="panel glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Recent Activity</p>
+          <h2>Collect / Export / Observe</h2>
+        </div>
+        <div id="recent-actions" class="action-stack"></div>
+      </section>
+
+      <section class="panel glass-panel reveal">
+        <div class="section-header">
+          <p class="section-kicker">Launchers</p>
+          <h2>Quick Entry Points</h2>
+        </div>
+        <div id="launcher-list" class="launcher-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/static/dashboard.js" defer></script>
+</body>
+</html>

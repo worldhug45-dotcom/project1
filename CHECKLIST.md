@@ -247,7 +247,104 @@
 - [x] 현재 `config` 경로와 `keywords override` 경로를 화면에서 확인할 수 있도록 설계되었다.
 - [x] 글래스모피즘 디자인 가이드가 정의되었다.
 - [x] Docker Compose 배포 구조와 볼륨 구성이 정리되었다.
-- [ ] 웹 Presentation shell이 구현되었다.
-- [ ] 웹에서 `collect`, `export`, `observe` 실행이 가능하다.
-- [ ] 웹에서 최근 결과물 위치와 최근 상태를 즉시 확인할 수 있다.
-- [ ] `/health` endpoint와 컨테이너 healthcheck가 구현되었다.
+- [x] 웹 Presentation shell이 구현되었다.
+- [x] 웹에서 `collect`, `export`, `observe` 실행이 가능하다.
+- [x] 웹에서 최근 결과물 위치와 최근 상태를 즉시 확인할 수 있다.
+- [x] `/health` endpoint와 컨테이너 healthcheck가 구현되었다.
+## 웹 운영자 대시보드 1단계 체크리스트
+
+- [x] 웹 화면이 실행된다.
+- [x] `GET /api/status`로 현재 status 정보를 조회할 수 있다.
+- [x] config 경로와 keywords override 경로가 웹에 표시된다.
+- [x] sqlite db 경로와 export output 경로가 웹에 표시된다.
+- [x] latest exported file 경로가 웹에 표시된다.
+- [x] observation history / report / raw 경로가 웹에 표시된다.
+- [x] 최근 collect / export / observe 상태 요약이 웹에 표시된다.
+- [x] status 조합 로직을 CLI와 웹이 공용으로 사용한다.
+- [x] 웹은 1단계에서 읽기 전용 상태 조회로 시작했다.
+- [x] 기존 CLI / manual_run 흐름과 충돌하지 않는다.
+- [x] collect / export / observe 실행 버튼이 연결되었다.
+
+## 웹 운영자 대시보드 2단계 체크리스트
+
+- [x] 웹에서 `collect` 실행 버튼 1개를 표시한다.
+- [x] `POST /actions/collect` endpoint가 동작한다.
+- [x] collect 실행은 기존 `manual_run.py collect` 흐름을 재사용한다.
+- [x] 같은 서버 프로세스 내 중복 collect 실행을 허용하지 않는다.
+- [x] collect 실행 상태를 `idle`, `running`, `finished`, `failed`로 구분해 표시한다.
+- [x] collect 결과 요약 6개 항목을 화면에서 확인할 수 있다.
+- [x] collect 완료 후 `GET /api/status` 기준 최근 상태와 일관되게 갱신된다.
+- [x] collect 성공 시 웹 테스트가 있다.
+- [x] collect 실패 시 웹 테스트가 있다.
+- [x] collect 중복 요청 방지 테스트가 있다.
+- [x] export / observe 실행 버튼은 후속 단계에서 연결되었다.
+
+## 웹 운영자 대시보드 3단계 체크리스트
+
+- [x] 웹에서 `export` 실행 버튼 1개를 표시한다.
+- [x] `POST /actions/export` endpoint가 동작한다.
+- [x] export 실행은 기존 `manual_run.py export` 흐름을 재사용한다.
+- [x] 같은 서버 프로세스 내 중복 export 실행을 허용하지 않는다.
+- [x] export 실행 상태를 `idle`, `running`, `finished`, `failed`로 구분해 표시한다.
+- [x] export 결과 요약 4개 항목을 화면에서 확인할 수 있다.
+- [x] export 완료 후 `GET /api/status` 기준 최근 export 상태와 일관되게 갱신된다.
+- [x] latest exported file 경로가 웹 상태와 함께 최신 값으로 갱신된다.
+- [x] export 성공 시 웹 테스트가 있다.
+- [x] export 실패 시 웹 테스트가 있다.
+- [x] export 중복 요청 방지 테스트가 있다.
+- [x] observe 실행 버튼은 후속 단계에서 연결되었다.
+
+## 웹 운영자 대시보드 4단계 체크리스트
+
+- [x] 웹에서 `observe` 실행 버튼 1개를 표시한다.
+- [x] `POST /actions/observe` endpoint가 동작한다.
+- [x] observe 실행은 기존 `manual_run.py observe` 흐름을 재사용한다.
+- [x] 같은 서버 프로세스 내 중복 observe 실행을 허용하지 않는다.
+- [x] observe 실행 상태를 `idle`, `running`, `finished`, `failed`로 구분해 표시한다.
+- [x] observe 결과 요약 10개 항목을 화면에서 확인할 수 있다.
+- [x] observe 완료 후 `GET /api/status` 기준 최근 observe 상태와 일관되게 갱신된다.
+- [x] observation history / report / raw 경로가 최신 값으로 갱신된다.
+- [x] observe 성공 시 웹 테스트가 있다.
+- [x] observe 실패 시 웹 테스트가 있다.
+- [x] observe 중복 요청 방지 테스트가 있다.
+
+## 웹 운영자 대시보드 5단계 체크리스트
+
+- [x] `GET /health` endpoint가 동작한다.
+- [x] `/health`는 서버 생존 여부와 최소 운영 상태를 JSON으로 반환한다.
+- [x] `status`, `app_name`, `server_time`, `config_path`, `sqlite_db_path`, `export_output_dir`를 확인할 수 있다.
+- [x] `settings_loaded`, `state_file_accessible`, `observation_history_exists`를 확인할 수 있다.
+- [x] 일부 상태 누락 시에도 서버가 죽지 않고 `degraded` 또는 `error`로 응답한다.
+- [x] health endpoint 웹 테스트가 있다.
+- [x] Docker healthcheck가 `/health`를 재사용한다.
+
+## 웹 운영자 대시보드 6단계 체크리스트
+
+- [x] 대시보드 상단에 Health Badge가 표시된다.
+- [x] `ok`, `degraded`, `error` 상태가 시각적으로 구분된다.
+- [x] `app_name`, `server_time`, `settings_loaded`, `state_file_accessible`, `observation_history_exists`가 함께 표시된다.
+- [x] `/health` 조회 실패 시에도 화면이 깨지지 않는다.
+- [x] Health Badge는 collect/export/observe 제어와 직접 결합되지 않는다.
+
+## 웹 운영자 대시보드 7단계 체크리스트
+
+- [x] 읽기 전용 Keyword Panel이 표시된다.
+- [x] `GET /api/keywords` endpoint가 동작한다.
+- [x] override 파일 경로와 존재 여부를 확인할 수 있다.
+- [x] `core`, `supporting`, `exclude` 키워드 그룹을 확인할 수 있다.
+- [x] 현재 적용 키워드 개수와 마지막 로드 경로를 확인할 수 있다.
+- [x] 기존 status/collect/export/observe/health 기능과 충돌하지 않는다.
+- [x] Keyword Panel 웹 테스트가 있다.
+
+## 웹 운영자 대시보드 8단계 체크리스트
+
+- [x] supporting 키워드만 편집 UI가 제공된다.
+- [x] `POST /api/keywords/supporting` endpoint가 동작한다.
+- [x] supporting 키워드를 웹에서 신규 추가할 수 있다.
+- [x] supporting 키워드를 웹에서 삭제할 수 있다.
+- [x] 저장 결과가 기존 `keywords.override.toml` 구조에 반영된다.
+- [x] 중복 / 빈 문자열 / 공백-only 입력은 저장되지 않는다.
+- [x] 저장 후 `/api/keywords`에서 최신 supporting 상태를 확인할 수 있다.
+- [x] 저장 성공/실패 메시지가 supporting 영역 안에서만 표시된다.
+- [x] `core`, `exclude`는 계속 읽기 전용이다.
+- [x] supporting 키워드 저장 웹 테스트가 있다.
