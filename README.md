@@ -176,6 +176,7 @@ $env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
 - 실제 API 수동 검증: [bizinfo_api_manual_verification.md](/C:/code/project1/doc/bizinfo_api_manual_verification.md)
 - 관찰 로그: [bizinfo_collect_observation_log.md](/C:/code/project1/doc/bizinfo_collect_observation_log.md)
 - 키워드 보정 분석: [keyword_adjustment_analysis.md](/C:/code/project1/doc/keyword_adjustment_analysis.md)
+- 웹 운영자 대시보드 설계: [web_operator_dashboard_mvp_design.md](/C:/code/project1/doc/web_operator_dashboard_mvp_design.md)
 - 릴리즈 노트 초안: [release_notes_v0.1.0.md](/C:/code/project1/doc/release_notes_v0.1.0.md)
 - 릴리즈 체크리스트: [release_checklist.md](/C:/code/project1/doc/release_checklist.md)
 

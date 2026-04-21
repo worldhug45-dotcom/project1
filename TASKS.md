@@ -248,3 +248,18 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] 가장 최근 `.xlsx` 파일 경로 출력
 - [x] 최근 collect/export/observe 상태 요약 출력
 - [x] 사용자용 수동 운영 가이드 문서 추가
+
+## 15단계: 웹 운영자 대시보드 MVP 설계
+
+- [x] 웹 운영자 대시보드 MVP 구조안 문서화
+- [x] 단일 운영 화면 구성안 문서화
+- [x] 글래스모피즘 디자인 가이드 정의
+- [x] Docker Compose 배포 구조 초안 문서화
+- [x] 구현용 TODO와 권장 구현 순서 정리
+- [ ] 웹 Presentation shell 구현
+- [ ] `GET /api/status` 상태 조회 endpoint 구현
+- [ ] `collect` 웹 액션 연결
+- [ ] `export` 웹 액션 연결
+- [ ] `observe` 웹 액션 연결
+- [ ] 웹 전용 job registry 또는 실행 중 상태 표시 구조 구현
+- [ ] `/health` endpoint와 Docker healthcheck 구현

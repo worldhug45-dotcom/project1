@@ -236,3 +236,16 @@
 - [x] `status`로 최근 collect/export/observe 상태를 빠르게 확인할 수 있다.
 - [x] `status`로 가장 최근 `.xlsx` 파일 경로를 바로 확인할 수 있다.
 - [x] 사용자용 운영 가이드가 있다.
+
+## 웹 운영자 대시보드 설계 체크리스트
+
+- [x] 웹 MVP 구조안이 문서로 정리되었다.
+- [x] 웹은 기존 Python 엔진을 재사용하는 얇은 orchestration 레이어로 정의되었다.
+- [x] 첫 화면에 `status`, `collect`, `export`, `observe`, 최근 결과물 경로가 포함되도록 설계되었다.
+- [x] 현재 `config` 경로와 `keywords override` 경로를 화면에서 확인할 수 있도록 설계되었다.
+- [x] 글래스모피즘 디자인 가이드가 정의되었다.
+- [x] Docker Compose 배포 구조와 볼륨 구성이 정리되었다.
+- [ ] 웹 Presentation shell이 구현되었다.
+- [ ] 웹에서 `collect`, `export`, `observe` 실행이 가능하다.
+- [ ] 웹에서 최근 결과물 위치와 최근 상태를 즉시 확인할 수 있다.
+- [ ] `/health` endpoint와 컨테이너 healthcheck가 구현되었다.

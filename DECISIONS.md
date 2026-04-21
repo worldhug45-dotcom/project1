@@ -232,3 +232,10 @@
 - Context: 내부 운영자가 `collect`, `export`, `observe`를 반복 실행하는 단계에서는 명령어 자체를 외우는 비용보다, 현재 경로와 가장 최근 실행 결과를 즉시 확인하는 편의성이 더 중요하다.
 - Decision: 운영자용 PowerShell launcher를 `scripts/run_collect.ps1`, `scripts/run_export.ps1`, `scripts/run_observe.ps1`, `scripts/run_status.ps1`로 제공한다. `scripts/manual_run.py`에는 `status` 액션을 추가해 현재 설정 경로, 키워드 override 경로, SQLite DB 경로, export output 경로, 최신 `.xlsx` 파일, observation history/report/raw 경로와 최근 collect/export/observe 결과 요약을 함께 출력한다. 최근 상태는 `data/operations/manual_run_state.json`에 저장한다.
 - Consequences: 운영자는 launcher만 실행해도 주요 작업을 시작할 수 있고, `status` 한 번으로 결과물 위치와 최근 실행 상태를 빠르게 파악할 수 있다. 기존 collect/export/observe 본 흐름은 유지하면서 운영형 솔루션에 가까운 사용성을 제공한다.
+
+## 2026-04-21 - 웹 운영자 대시보드는 CLI 엔진을 재사용하는 얇은 레이어로 시작한다
+
+- Status: Accepted
+- Context: 현재 내부 운영형 솔루션은 CLI와 launcher 중심으로 안정화되었고, 다음 단계에서는 내부 사용자가 브라우저 한 화면에서 상태와 결과물 경로를 확인하고 `collect`, `export`, `observe`를 실행할 수 있어야 한다. 그러나 collect/export 엔진을 웹에서 다시 구현하면 중복과 회귀 위험이 커진다.
+- Decision: 웹 운영자 대시보드 MVP는 단일 화면 중심의 `Presentation` 레이어로 추가하고, 기존 Python 엔진은 그대로 유지한다. 웹 액션은 `scripts/manual_run.py` 또는 그에 상응하는 공용 orchestration 서비스를 subprocess/gateway 형태로 호출하며, 상태 조회는 `manual_run_state.json`, 최신 `.xlsx`, observation history/report/raw 경로를 조합해 표시한다. Docker Compose 배포는 단일 `operator-web` 컨테이너와 `config`, `data`, `output`, `doc` 볼륨 구조를 기준으로 설계한다.
+- Consequences: 웹 MVP는 빠르게 붙일 수 있고, CLI와 웹이 같은 실행 경로를 재사용하므로 운영 일관성이 높아진다. 반면 현재 observation report가 `doc/`에 생성되므로 Docker에서는 `doc` 볼륨이 필요하며, 장기적으로는 generated artifact 경로를 `output` 계열로 재정리할 여지가 남는다.
