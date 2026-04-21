@@ -1,330 +1,206 @@
 # AI·인프라·SI 사업기회 탐지용 공고 수집 시스템
 
-## 1. 프로젝트 개요
-이 프로젝트는 당사의 **AI, 인프라, SI 사업영역과 관련된 외부 사업기회**를 체계적으로 탐지하기 위한 공고 수집 시스템이다.
+기업마당과 향후 나라장터 공고를 수집해, AI·인프라·SI 관점에서 적격 여부를 판정하고 SQLite와 Excel 산출물로 정리하는 내부 운영형 솔루션이다.
 
-1차 MVP는 아래 2개 트랙으로 구성한다.
+## 현재 상태
 
-- **Track 1**: 기업마당 기반 지원사업 공고 수집
-- **Track 2**: 나라장터 기반 입찰공고 수집
+2026-04-21 기준 현재 구현 상태는 아래와 같다.
 
-수집한 공고는 키워드 기준으로 적격 여부를 판정하고, 공통 형식으로 정규화하여 저장한 뒤, 검토 가능한 엑셀 파일로 산출한다.
+| 항목 | 상태 | 설명 |
+| --- | --- | --- |
+| 기업마당 fixture collect | 완료 | 샘플 응답 기반 collect 흐름이 end-to-end로 동작한다. |
+| 기업마당 실제 API collect | 완료 | `source_mode=api`에서 실제 API를 호출해 SQLite 저장까지 이어진다. |
+| 키워드 판정/정규화 | 완료 | `Notice` 공통 모델, 도메인 분류, skip reason 진단이 동작한다. |
+| SQLite 저장/중복 방지 | 완료 | `DeduplicationKey` 기준으로 중복 저장을 막는다. |
+| Excel export | 완료 | 실제 `.xlsx` 파일 생성과 `support_notices` / `bid_notices` 시트 생성이 동작한다. |
+| observation 누적 | 완료 | collect diagnostics를 바탕으로 관찰 로그와 history를 누적한다. |
+| 운영자 수동 실행 도구 | 완료 | `manual_run.py`, PowerShell launcher, `status` 액션이 준비되어 있다. |
+| 나라장터 수집 | 미구현 | README 범위에는 포함되어 있지만 현재 코드는 아직 연결하지 않았다. |
+| `all` 액션 완성 | 미구현 | 현재 CLI `all`은 skeleton 상태이며 collect+export orchestration은 아직 연결하지 않았다. |
 
----
+## 내부 운영자가 바로 쓰는 명령
 
-## 2. 1차 MVP 목표
-1차 MVP의 목표는 다음과 같다.
+PowerShell 기준:
 
-- 기업마당 공고를 조회한다.
-- 나라장터 공고를 조회한다.
-- AI·인프라·SI 관련 공고를 키워드 기반으로 선별한다.
-- 공통 데이터 모델로 정규화한다.
-- 중복 없이 저장한다.
-- 엑셀 산출물을 생성한다.
-- 재실행 가능하고 장애 추적 가능한 구조를 만든다.
+```powershell
+.\scripts\run_status.ps1
+```
 
----
+```powershell
+$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
+.\scripts\run_collect.ps1
+```
 
-## 3. 1차 범위
-이번 1차 MVP에서 구현하는 범위는 아래와 같다.
+```powershell
+$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
+.\scripts\run_collect.ps1 -CollectDiagnostics
+```
+
+```powershell
+.\scripts\run_export.ps1
+```
+
+```powershell
+$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
+.\scripts\run_observe.ps1
+```
+
+운영 가이드는 [manual_operations_guide.md](/C:/code/project1/doc/manual_operations_guide.md)를 기준 문서로 사용한다.
+
+## 핵심 기능
+
+- 기업마당 지원사업 API collect
+- fixture 기반 collect 테스트 경로
+- 키워드 기반 적격 판정과 skip reason 진단
+- `Notice` 공통 모델 정규화
+- SQLite 저장 및 중복 방지
+- 실제 `.xlsx` export
+- observation history / Markdown report 누적
+- 운영자용 launcher / `status` / 결과물 경로 요약
+
+## 현재 범위와 제외 범위
+
+### 현재 구현 범위
 
 - 기업마당 공고 조회
-- 나라장터 공고 조회
 - 키워드 기반 적격 여부 판정
 - 공통 필드 정규화
-- DB 저장
-- 엑셀 산출물 생성
-- 로그 생성
+- SQLite 저장
+- Excel 산출물 생성
+- 로그 및 실행 요약
+- 운영자 수동 실행 편의 기능
 
----
+### 아직 구현하지 않은 항목
 
-## 4. 1차 제외 범위
-아래 항목은 1차 MVP 범위에 포함하지 않는다.
-
+- 나라장터 공고 조회
 - NTIS 연동
 - K-Startup 연동
-- AI 요약
+- 검색 UI
 - Word 출력
 - 알림 연동
-- 검색 UI
-- 우선순위 자동 점수화
+- `all` 액션 완성
 
-범위 외 요청은 즉시 구현하지 않고 별도 변경요청으로 분리한다.
-
----
-
-## 5. 핵심 개발 원칙
-이 프로젝트는 빠르게 만드는 것보다 **안정성, 재실행 안전성, 유지보수성, 확장성**을 우선한다.
-
-- 책임을 분리한다.
-- 인터페이스를 먼저 정의한다.
-- 내부 데이터는 공통 데이터 모델로만 전달한다.
-- 설정은 코드 밖에서 관리한다.
-- 필수 설정값은 실행 시작 시 검증한다.
-- 로그는 운영 기준으로 남긴다.
-- 같은 작업을 여러 번 실행해도 결과가 깨지지 않게 설계한다.
-
----
-
-## 6. 권장 아키텍처
-기본 구조는 아래와 같이 나눈다.
-
-- `source`: 외부 공고 조회
-- `filter`: 키워드 기반 적격 판정
-- `normalize`: 공통 필드 변환
-- `persistence`: DB 저장
-- `export`: 엑셀 산출물 생성
-- `ops`: 로그, 재시도, 실행 제어
-
-외부 연동은 **Ports and Adapters** 방식으로 분리한다.  
-새 소스 추가는 기존 로직 수정이 아니라 **새 어댑터 추가**로 해결하는 것을 원칙으로 한다.
-
----
-
-## 7. 데이터 분류 기준
-공고 데이터는 아래 기준으로 분류한다.
-
-- `notice_type`: `support` / `bid` / `rnd` / `startup`
-- `business_domains`: 다중 선택 허용
-- `primary_domain`: 대표 1개
-- `match_keywords`: 매칭 키워드 목록
-
-`business_domains`는 내부 저장 및 분류용 필드로 사용하고,  
-엑셀 산출물에는 `primary_domain`을 기본 출력 기준으로 사용한다.
-
----
-
-## 8. 키워드 운영 기준
-
-### 핵심 키워드
-- AI
-- 인공지능
-- 디지털전환
-- DX
-- 디지털트윈
-- 시스템 통합
-- SI
-- 정보화
-
-### 보조 키워드
-- 데이터
-- 빅데이터
-- 클라우드
-- 인프라
-- 서버
-- 네트워크
-- 보안
-- IT서비스
-- 유지보수
-
-### 강제 제외 키워드
-- 채용
-- 행사
-- 교육
-- 경진대회
-- 복지
-- 문화
-- 비관련 제조 일반
-
----
-
-## 9. 산출물 기준
-엑셀 산출물은 최소 2개 시트로 구성한다.
-
-- `support_notices`: 기업마당 지원사업 공고
-- `bid_notices`: 나라장터 입찰공고
-
-필수 컬럼은 아래와 같다.
-
-- `source`
-- `notice_type`
-- `primary_domain`
-- `title`
-- `organization`
-- `posted_at`
-- `end_at`
-- `status`
-- `url`
-- `match_keywords`
-- `collected_at`
-
-규칙:
-- 날짜 형식은 `YYYY-MM-DD`
-- URL은 클릭 가능해야 한다
-- 최근 공고를 5분 이내 검토 가능한 가독성을 확보한다
-
----
-
-## 10. 완료 기준
-완료 기준은 아래와 같다.
-
-### 조회 기준
-- 기업마당 **조회 결과 상위 20건** 조회 성공
-- 나라장터 **조회 결과 상위 20건** 조회 성공
-
-### 파싱 기준
-- 조회 대상 기준 필수 필드 파싱 성공률 95% 이상
-
-### 저장 기준
-- 적격 판정된 건은 100% 저장
-- 동일 건 재수집 시 중복 저장률 0%
-
-### 산출물 기준
-- 엑셀 생성 성공
-- 로그 생성 성공
-
-### 운영 기준
-- 검증 기간 5영업일
-- 치명적 실패 0회
-- 수동 재실행 성공률 100%
-
----
-
-## 11. 장애 기준
-
-### 치명적 실패
-아래 중 하나라도 발생하면 치명적 실패로 본다.
-
-- 기업마당 또는 나라장터 중 한 트랙이라도 전체 수집 실패
-- DB 저장 실패
-- 엑셀 미생성
-- 로그 미생성
-
-### 비치명적 오류
-아래는 비치명적 오류로 본다.
-
-- 일부 공고의 선택 필드 누락
-- 재시도 후 복구된 오류
-- 일부 공고 제외 후 전체 실행 성공
-
-외부 API 제공기관의 정기 점검 또는 공지된 일시 중단은 운영 로그에 별도 기록하고, 내부 장애와 구분해 관리한다.
-
----
-
-## 12. 권장 프로젝트 구조
+## 프로젝트 구조
 
 ```text
 project-root/
 ├─ app/
-│  ├─ sources/
-│  ├─ filters/
-│  ├─ normalizers/
-│  ├─ persistence/
+│  ├─ application/
+│  ├─ domain/
 │  ├─ exporters/
+│  ├─ filters/
+│  ├─ infrastructure/
+│  ├─ normalizers/
 │  ├─ ops/
+│  ├─ persistence/
+│  ├─ sources/
 │  └─ main.py
 ├─ config/
 ├─ data/
+├─ doc/
 ├─ output/
-├─ logs/
+├─ scripts/
 ├─ tests/
+├─ CHECKLIST.md
+├─ DECISIONS.md
+├─ TASKS.md
 └─ README.md
 ```
 
-설명:
+## 주요 경로
 
-- `sources`: 기업마당, 나라장터 등 외부 소스 어댑터
-- `filters`: 키워드 판정
-- `normalizers`: 공통 데이터 모델 변환
-- `persistence`: DB 저장/조회
-- `exporters`: 엑셀 출력
-- `ops`: 설정, 로그, 재시도, 실행 제어
-- `tests`: unit / integration / export 테스트
+- 기본 설정: `config/settings.example.toml`
+- 운영 설정: `config/settings.local.toml`
+- 키워드 override: `config/keywords.override.toml`
+- SQLite DB 기본 경로: `data/observations/bizinfo/notices.sqlite3`
+- observation history: `data/observations/bizinfo/collect_observations.json`
+- observation report: `doc/bizinfo_collect_observation_log.md`
+- export output: `output/observations/bizinfo/`
+- manual runner state: `data/operations/manual_run_state.json`
 
----
+## 실행 방식
 
-## 13. 구현 원칙
-- 경로 처리는 `pathlib`를 사용한다.
-- DB 접근은 저장소 계층으로 통일한다.
-- 실행 진입점은 하나로 두고 `collect` / `export` / `all` 액션으로 분리한다.
-- 실행 액션은 `collect`, `export`, `all`을 기본으로 한다.
-- 예외는 아래 3종으로 나누고 일관되게 적용한다.
-  - 재시도 가능 오류
-  - 비치명적 오류
-  - 치명적 오류
-- 아래 값은 하드코딩하지 않는다.
-  - 키워드 목록
-  - 시트명
-  - 파일명 규칙
-  - 활성 소스
-  - 재시도 횟수
-  - 타임아웃
-  - 출력 경로
+### 1. 상태 확인
 
----
+```powershell
+.\scripts\run_status.ps1
+```
 
-## 14. 품질 관리 원칙
-- 정적 검사: format, lint, type check
-- 테스트 계층:
-  - unit: 키워드 판정, 날짜 변환, 중복 키 생성
-  - integration: 조회 → 정규화 → 저장
-  - export: 시트, 컬럼, 파일 생성
-- 버그 수정 시 재현 테스트를 함께 추가한다.
-- 회귀 방지를 위해 기존 핵심 동작 테스트를 유지한다.
+현재 설정 경로, 키워드 override 경로, SQLite DB, output 디렉터리, 최근 `.xlsx`, 최근 collect/export/observe 상태를 한 번에 볼 수 있다.
 
----
+### 2. collect
 
-## 15. 운영 로그 기준
-로그에는 최소 아래 항목을 남긴다.
+```powershell
+$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
+.\scripts\run_collect.ps1
+```
 
-- 실행 시작/종료 시각
-- 실행 ID
-- 실행 액션
-- 실행 결과 상태
-- 소스명
-- 조회 건수
-- 저장 건수
-- 제외 건수
-- 오류 유형
-- 출력 파일 경로
+fixture 모드:
 
----
+```powershell
+.\scripts\run_collect.ps1 -SourceMode fixture
+```
 
-## 16. 구현 전 확정 항목
-코딩 전 아래 항목을 먼저 문서로 확정한다.
+### 3. export
 
-- 소스별 조회 방식
-- 공통 데이터 모델
-- 중복 판단 규칙
-- 키워드 판정 규칙
-- 예외 처리 정책
-- 로그 필수 항목
-- 엑셀 시트/컬럼 기준
-- 테스트 범위
+```powershell
+.\scripts\run_export.ps1
+```
 
-소스별 조회 방식, 공통 데이터 모델, 중복 판단 규칙, 키워드 규칙은 구현 전에 문서로 확정한다.  
-구현 중 기준 변경이 필요한 경우, 코드 수정 전에 관련 문서를 먼저 갱신한다.
+### 4. observe
 
----
+```powershell
+$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"
+.\scripts\run_observe.ps1
+```
 
-## 17. 바이브코딩 작업 원칙
-이 프로젝트에서 AI를 활용해 코딩할 때는 아래 원칙을 따른다.
+## 설정 원칙
 
-- 한 번에 전체를 만들지 않고 작은 단위로 나눈다.
-- 먼저 구조와 인터페이스를 고정한 뒤 구현한다.
-- 새 기능 추가보다 기존 구조를 깨지 않는 방향을 우선한다.
-- 임시 처리보다 재실행 가능성과 유지보수성을 우선한다.
-- 범위 밖 기능은 README 기준으로 보류한다.
-- 구현 결과는 항상 1차 MVP 범위 안에서 검토한다.
+- 설정은 `TOML` 기반으로 관리한다.
+- 비밀값은 환경 변수로만 주입한다.
+- 키워드 추가/제거는 `config/keywords.override.toml`에서 처리한다.
+- override 우선순위는 `CLI > 환경 변수 > override 파일 > 설정 파일 > 기본값`이다.
 
----
+세부 기준은 [settings_schema.md](/C:/code/project1/doc/settings_schema.md)를 따른다.
 
-## 18. 현재 우선순위
-구현 우선순위는 아래와 같다.
+## 문서 맵
 
-1. 공통 데이터 모델 정의
-2. 설정 구조 정의
-3. 기업마당 소스 조회
-4. 나라장터 소스 조회
-5. 키워드 판정
-6. 정규화
-7. DB 저장
-8. 엑셀 출력
-9. 로그/실행 제어
-10. 테스트 정리
+- 공통 데이터 모델: [common_data_model.md](/C:/code/project1/doc/common_data_model.md)
+- 설정 구조: [settings_schema.md](/C:/code/project1/doc/settings_schema.md)
+- 키워드 판정 규칙: [keyword_matching_rules.md](/C:/code/project1/doc/keyword_matching_rules.md)
+- 로그 정책: [logging_policy.md](/C:/code/project1/doc/logging_policy.md)
+- 예외 처리 정책: [error_handling_policy.md](/C:/code/project1/doc/error_handling_policy.md)
+- 엑셀 포맷 기준: [excel_export_format.md](/C:/code/project1/doc/excel_export_format.md)
+- fixture 기준: [fixtures.md](/C:/code/project1/doc/fixtures.md)
+- 운영 가이드: [manual_operations_guide.md](/C:/code/project1/doc/manual_operations_guide.md)
+- 실제 API 수동 검증: [bizinfo_api_manual_verification.md](/C:/code/project1/doc/bizinfo_api_manual_verification.md)
+- 관찰 로그: [bizinfo_collect_observation_log.md](/C:/code/project1/doc/bizinfo_collect_observation_log.md)
+- 키워드 보정 분석: [keyword_adjustment_analysis.md](/C:/code/project1/doc/keyword_adjustment_analysis.md)
+- 릴리즈 체크리스트: [release_checklist.md](/C:/code/project1/doc/release_checklist.md)
 
----
+## 테스트
 
-## 19. 결론
-1차 MVP는 빠른 구현보다 안정성, 재실행 안전성, 확장성을 우선한다.  
-따라서 구현은 기능 나열보다 책임 분리, 인터페이스 고정, 데이터 구조 명시, 설정 외부화, 테스트 가능한 구조를 기준으로 진행한다.
+기본 검증 명령:
+
+```powershell
+python -m unittest discover -v
+```
+
+```powershell
+python -m compileall app tests scripts
+```
+
+2026-04-21 기준 전체 테스트는 `67`개 통과 상태다.
+
+## 다음 작업 후보
+
+현재 가장 자연스러운 다음 단계는 아래 순서다.
+
+1. 나라장터 collect adapter 구현
+2. `all` 액션을 collect → export orchestration으로 완성
+3. 운영 상태 파일과 observation report를 더 시각적으로 정리
+
+## 요약
+
+이 저장소는 “기획 단계 문서”를 넘어, 현재는 **기업마당 실제 API collect + SQLite 저장 + Excel export + observation + 운영자 실행 도구**까지 갖춘 내부 운영형 MVP 상태다.  
+다만 나라장터와 `all` 액션은 아직 미완성이므로, README 기준 목표와 현재 구현 상태를 구분해서 운영하는 것이 중요하다.
