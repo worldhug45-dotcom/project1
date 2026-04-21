@@ -239,3 +239,10 @@
 - Context: 현재 내부 운영형 솔루션은 CLI와 launcher 중심으로 안정화되었고, 다음 단계에서는 내부 사용자가 브라우저 한 화면에서 상태와 결과물 경로를 확인하고 `collect`, `export`, `observe`를 실행할 수 있어야 한다. 그러나 collect/export 엔진을 웹에서 다시 구현하면 중복과 회귀 위험이 커진다.
 - Decision: 웹 운영자 대시보드 MVP는 단일 화면 중심의 `Presentation` 레이어로 추가하고, 기존 Python 엔진은 그대로 유지한다. 웹 액션은 `scripts/manual_run.py` 또는 그에 상응하는 공용 orchestration 서비스를 subprocess/gateway 형태로 호출하며, 상태 조회는 `manual_run_state.json`, 최신 `.xlsx`, observation history/report/raw 경로를 조합해 표시한다. Docker Compose 배포는 단일 `operator-web` 컨테이너와 `config`, `data`, `output`, `doc` 볼륨 구조를 기준으로 설계한다.
 - Consequences: 웹 MVP는 빠르게 붙일 수 있고, CLI와 웹이 같은 실행 경로를 재사용하므로 운영 일관성이 높아진다. 반면 현재 observation report가 `doc/`에 생성되므로 Docker에서는 `doc` 볼륨이 필요하며, 장기적으로는 generated artifact 경로를 `output` 계열로 재정리할 여지가 남는다.
+
+## 2026-04-21 - 나라장터 1차 수집은 용역 입찰공고 중심으로 fixture 우선 구현한다
+
+- Status: Accepted
+- Context: 나라장터는 입찰공고정보서비스 내부에서도 물품, 공사, 용역 등 세부 endpoint가 갈라져 있고, 1차 MVP의 AI/인프라/SI 범위에는 용역 공고가 가장 직접적으로 맞닿아 있다. 현재 collect orchestration은 단일 source 실행 기준이므로, 먼저 fixture와 parser/normalizer를 안정화한 뒤 실제 API skeleton을 잇는 편이 안전하다.
+- Decision: 나라장터 1차 수집은 `getBidPblancListInfoServc` 계열 용역 입찰공고 endpoint를 기준으로 구현한다. Infrastructure 계층에는 `G2BNoticeRaw`, parser, `G2BFixtureSourceAdapter`, `G2BApiHttpClient`, `G2BSourceAdapter`, `G2BNoticeNormalizer`를 추가하고, 서비스키는 `PROJECT1_G2B_API_KEY` 환경 변수로만 주입한다. collect는 현재 단계에서 한 번에 하나의 enabled source만 실행하도록 두고, `sources.bizinfo` 또는 `sources.g2b` 중 하나를 선택해 기존 repository/export 흐름을 재사용한다.
+- Consequences: 나라장터 fixture 데이터를 `Notice`로 정규화하고 SQLite 저장과 export 흐름에 연결할 준비가 갖춰진다. 반면 bizinfo와 g2b 동시 collect orchestration은 이후 단계의 확장 작업으로 남는다.

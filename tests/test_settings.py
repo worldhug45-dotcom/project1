@@ -4,6 +4,7 @@ from unittest import TestCase
 from app.infrastructure.settings import (
     BIZINFO_CERT_KEY_ENV_VAR,
     ConfigurationError,
+    G2B_API_KEY_ENV_VAR,
     KEYWORDS_OVERRIDE_PATH_ENV_VAR,
     load_settings,
     resolve_keyword_override_path,
@@ -46,7 +47,7 @@ enabled = true
 fixture_path = "{fixture_path.as_posix()}"
 
 [sources.g2b]
-enabled = true
+enabled = false
 
 [runtime]
 action = "collect"
@@ -64,6 +65,37 @@ exclude = ["채용"]
 
         self.assertEqual(settings.runtime.source_mode, "fixture")
         self.assertEqual(settings.sources.bizinfo.fixture_path, fixture_path)
+
+    def test_fixture_source_mode_requires_existing_g2b_fixture(self) -> None:
+        with temporary_directory() as directory:
+            fixture_path = Path(directory) / "g2b.json"
+            fixture_path.write_text('{"items": []}', encoding="utf-8")
+            config_path = Path(directory) / "settings.toml"
+            config_path.write_text(
+                f"""
+[sources.bizinfo]
+enabled = false
+
+[sources.g2b]
+enabled = true
+fixture_path = "{fixture_path.as_posix()}"
+
+[runtime]
+action = "collect"
+source_mode = "fixture"
+
+[keywords]
+core = ["AI"]
+supporting = ["데이터"]
+exclude = ["채용"]
+""",
+                encoding="utf-8",
+            )
+
+            settings = load_settings(config_path)
+
+        self.assertEqual(settings.runtime.source_mode, "fixture")
+        self.assertEqual(settings.sources.g2b.fixture_path, fixture_path)
 
     def test_enabled_collect_source_requires_endpoint(self) -> None:
         with temporary_directory() as directory:
@@ -119,6 +151,35 @@ exclude = ["채용"]
                 load_settings(config_path, environ={})
 
         self.assertIn(BIZINFO_CERT_KEY_ENV_VAR, str(context.exception))
+
+    def test_collect_api_mode_requires_g2b_api_key_from_env(self) -> None:
+        with temporary_directory() as directory:
+            config_path = Path(directory) / "settings.toml"
+            config_path.write_text(
+                """
+[sources.bizinfo]
+enabled = false
+
+[sources.g2b]
+enabled = true
+endpoint = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
+
+[runtime]
+action = "collect"
+source_mode = "api"
+
+[keywords]
+core = ["AI"]
+supporting = ["데이터"]
+exclude = ["채용"]
+""",
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(ConfigurationError) as context:
+                load_settings(config_path, environ={})
+
+        self.assertIn(G2B_API_KEY_ENV_VAR, str(context.exception))
 
     def test_export_action_does_not_require_source_endpoint(self) -> None:
         with temporary_directory() as directory:

@@ -15,6 +15,7 @@ class ConfigurationError(ValueError):
 
 
 BIZINFO_CERT_KEY_ENV_VAR = "PROJECT1_BIZINFO_CERT_KEY"
+G2B_API_KEY_ENV_VAR = "PROJECT1_G2B_API_KEY"
 KEYWORDS_OVERRIDE_PATH_ENV_VAR = "PROJECT1_KEYWORDS_OVERRIDE_PATH"
 DEFAULT_KEYWORDS_OVERRIDE_FILENAME = "keywords.override.toml"
 
@@ -36,6 +37,8 @@ class SourceSettings:
     retry_count: int = 3
     retry_backoff_seconds: int = 2
     page_size: int = 20
+    inquiry_division: str = "1"
+    inquiry_window_days: int = 7
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,15 +180,18 @@ def validate_settings(settings: Settings) -> None:
             errors.append(
                 f"sources.bizinfo.cert_key must be provided via {BIZINFO_CERT_KEY_ENV_VAR} in api source mode."
             )
-    if settings.runtime.action in {"collect", "all"} and settings.runtime.source_mode == "fixture":
-        if not settings.sources.bizinfo.enabled:
-            errors.append("sources.bizinfo.enabled must be true in fixture source mode.")
-        if not str(settings.sources.bizinfo.fixture_path).strip():
-            errors.append("sources.bizinfo.fixture_path is required in fixture source mode.")
-        elif not settings.sources.bizinfo.fixture_path.exists():
+        if settings.sources.g2b.enabled and not settings.sources.g2b.cert_key.strip():
             errors.append(
-                f"sources.bizinfo.fixture_path does not exist: {settings.sources.bizinfo.fixture_path}"
+                f"sources.g2b.cert_key must be provided via {G2B_API_KEY_ENV_VAR} in api source mode."
             )
+    if settings.runtime.action in {"collect", "all"} and settings.runtime.source_mode == "fixture":
+        for label, source in enabled_sources:
+            if not source.enabled:
+                continue
+            if not str(source.fixture_path).strip():
+                errors.append(f"{label}.fixture_path is required in fixture source mode.")
+            elif not source.fixture_path.exists():
+                errors.append(f"{label}.fixture_path does not exist: {source.fixture_path}")
 
     for label, source in enabled_sources:
         if source.timeout_seconds < 1:
@@ -194,6 +200,11 @@ def validate_settings(settings: Settings) -> None:
             errors.append(f"{label}.retry_count must be 0 or greater.")
         if source.page_size < 1:
             errors.append(f"{label}.page_size must be greater than 0.")
+        if source.inquiry_window_days < 0:
+            errors.append(f"{label}.inquiry_window_days must be 0 or greater.")
+
+    if settings.sources.g2b.enabled and settings.sources.g2b.inquiry_division not in {"1", "3"}:
+        errors.append("sources.g2b.inquiry_division currently supports only '1' or '3'.")
 
     if not settings.keywords.core:
         errors.append("keywords.core must not be empty.")
@@ -281,6 +292,10 @@ def _merge_source(current: SourceSettings, raw: dict[str, Any]) -> SourceSetting
             raw.get("retry_backoff_seconds", current.retry_backoff_seconds)
         ),
         page_size=int(raw.get("page_size", current.page_size)),
+        inquiry_division=str(raw.get("inquiry_division", current.inquiry_division)),
+        inquiry_window_days=int(
+            raw.get("inquiry_window_days", current.inquiry_window_days)
+        ),
     )
 
 
@@ -383,6 +398,9 @@ def _apply_env(settings: Settings, environ: dict[str, str]) -> Settings:
     _set_if_present(raw, ("sources", "bizinfo", "fixture_path"), environ, "PROJECT1_SOURCES_BIZINFO_FIXTURE_PATH")
     _set_if_present(raw, ("sources", "g2b", "enabled"), environ, "PROJECT1_SOURCES_G2B_ENABLED")
     _set_if_present(raw, ("sources", "g2b", "endpoint"), environ, "PROJECT1_SOURCES_G2B_ENDPOINT")
+    _set_if_present(raw, ("sources", "g2b", "fixture_path"), environ, "PROJECT1_SOURCES_G2B_FIXTURE_PATH")
+    _set_if_present(raw, ("sources", "g2b", "inquiry_division"), environ, "PROJECT1_SOURCES_G2B_INQUIRY_DIVISION")
+    _set_if_present(raw, ("sources", "g2b", "inquiry_window_days"), environ, "PROJECT1_SOURCES_G2B_INQUIRY_WINDOW_DAYS")
     _set_if_present(raw, ("storage", "database_path"), environ, "PROJECT1_STORAGE_DATABASE_PATH")
     _set_if_present(raw, ("export", "output_dir"), environ, "PROJECT1_EXPORT_OUTPUT_DIR")
     _set_if_present(raw, ("logging", "level"), environ, "PROJECT1_LOGGING_LEVEL")
@@ -397,6 +415,17 @@ def _apply_env(settings: Settings, environ: dict[str, str]) -> Settings:
                 bizinfo=replace(
                     settings.sources.bizinfo,
                     cert_key=environ[BIZINFO_CERT_KEY_ENV_VAR],
+                ),
+            ),
+        )
+    if G2B_API_KEY_ENV_VAR in environ:
+        settings = replace(
+            settings,
+            sources=replace(
+                settings.sources,
+                g2b=replace(
+                    settings.sources.g2b,
+                    cert_key=environ[G2B_API_KEY_ENV_VAR],
                 ),
             ),
         )

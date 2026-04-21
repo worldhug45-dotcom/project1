@@ -1,0 +1,45 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "pageNo": 1,
+      "numOfRows": 2,
+      "totalCount": 2,
+      "items": [
+        {
+          "bidNtceNo": "R26BK00000001",
+          "bidNtceOrd": "000",
+          "bidNtceNm": "AI 기반 정보시스템 통합 유지보수 용역",
+          "dminsttNm": "한국디지털진흥원",
+          "ntceInsttNm": "조달청",
+          "bidNtceDate": "2026/04/21",
+          "bidClseDate": "2026/05/02 10:00",
+          "bidNtceSttusNm": "공고중",
+          "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK00000001&bidPbancOrd=000",
+          "bidNtceDtlInfo": "AI, 데이터, 클라우드 기반 통합 유지보수 사업",
+          "bsnsDivNm": "일반용역",
+          "cntrctCnclsMthdNm": "협상에의한계약",
+          "bidMethdNm": "전자입찰"
+        },
+        {
+          "bidNtceNo": "R26BK00000002",
+          "bidNtceOrd": "000",
+          "bidNtceNm": "행사 운영 대행 용역",
+          "dminsttNm": "한국문화지원센터",
+          "ntceInsttNm": "조달청",
+          "bidNtceDate": "2026/04/22",
+          "bidClseDate": "2026/05/03 11:00",
+          "bidNtceSttusNm": "공고중",
+          "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK00000002&bidPbancOrd=000",
+          "bidNtceDtlInfo": "행사 운영 및 현장 진행 대행",
+          "bsnsDivNm": "일반용역",
+          "cntrctCnclsMthdNm": "일반경쟁",
+          "bidMethdNm": "전자입찰"
+        }
+      ]
+    }
+  }
+}

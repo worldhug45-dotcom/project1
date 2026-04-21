@@ -14,12 +14,16 @@ page_size = 20
 # 인증키는 TOML에 넣지 않고 환경 변수 PROJECT1_BIZINFO_CERT_KEY로만 주입한다.
 
 [sources.g2b]
-enabled = true
-endpoint = "https://apis.data.go.kr/..."
+enabled = false
+endpoint = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
+fixture_path = "tests/fixtures/g2b/bid_notices.json"
 timeout_seconds = 10
 retry_count = 3
 retry_backoff_seconds = 2
 page_size = 20
+inquiry_division = "1"
+inquiry_window_days = 7
+# 서비스키는 TOML에 넣지 않고 환경 변수 PROJECT1_G2B_API_KEY로만 주입한다.
 
 [keywords]
 core = ["AI", "인공지능", "디지털전환", "DX", "디지털트윈", "시스템 통합", "SI", "정보화"]

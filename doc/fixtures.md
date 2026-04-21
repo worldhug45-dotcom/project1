@@ -49,5 +49,33 @@ tests/fixtures/bizinfo/support_notices.json
 - 기업마당 fixture는 `tests/fixtures/bizinfo/support_notices.json`에 둔다.
 - fixture 기반 파싱은 `BizinfoNoticeRaw` DTO로 변환한다.
 - fixture 기반 정규화는 `BizinfoNoticeRaw`를 `Notice`로 변환한다.
-- 부적격 공고는 정규화 단계에서 제외 가능해야 한다.
 
+## 4. 나라장터 fixture
+
+나라장터 입찰공고 fixture 위치:
+
+```text
+tests/fixtures/g2b/bid_notices.json
+```
+
+권장 형식:
+
+- `response.header.resultCode`
+- `response.header.resultMsg`
+- `response.body.items`
+- 각 item은 최소 아래 필드를 가진다.
+  - `bidNtceNo`
+  - `bidNtceOrd`
+  - `bidNtceNm`
+  - `dminsttNm` 또는 `ntceInsttNm`
+  - `bidNtceDate`
+  - `bidClseDate`
+  - `bidNtceSttusNm`
+  - `bidNtceDtlUrl`
+
+기준:
+
+- 나라장터 fixture는 `tests/fixtures/g2b/bid_notices.json`에 둔다.
+- fixture 기반 파싱은 `G2BNoticeRaw` DTO로 변환한다.
+- fixture 기반 정규화는 `G2BNoticeRaw`를 `Notice`로 변환한다.
+- 부적격 공고는 정규화 단계에서 제외 가능해야 한다.

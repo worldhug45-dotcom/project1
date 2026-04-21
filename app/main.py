@@ -14,7 +14,7 @@ from app.application import (
 from app.exporters import XlsxExcelExporter
 from app.filters import KeywordSet
 from app.infrastructure.settings import ConfigurationError, Settings, load_settings
-from app.normalizers import BizinfoNoticeNormalizer
+from app.normalizers import BizinfoNoticeNormalizer, G2BNoticeNormalizer
 from app.ops import (
     ConfigurationAppError,
     ConsoleLogSink,
@@ -25,7 +25,14 @@ from app.ops import (
     create_run_id,
 )
 from app.persistence import SQLiteNoticeRepository
-from app.sources import BizinfoApiHttpClient, BizinfoFixtureSourceAdapter, BizinfoSourceAdapter
+from app.sources import (
+    BizinfoApiHttpClient,
+    BizinfoFixtureSourceAdapter,
+    BizinfoSourceAdapter,
+    G2BApiHttpClient,
+    G2BFixtureSourceAdapter,
+    G2BSourceAdapter,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -209,7 +216,7 @@ def _run_collect(
         supporting=settings.keywords.supporting,
         exclude=settings.keywords.exclude,
     )
-    source = _build_bizinfo_collect_source(settings)
+    source, normalizer = _build_collect_stack(settings, keywords)
     diagnostic_reporter = (
         _build_collect_diagnostic_reporter(run_id, sink)
         if emit_collect_diagnostics
@@ -218,7 +225,7 @@ def _run_collect(
     with SQLiteNoticeRepository(settings.storage.database_path) as repository:
         use_case = DefaultCollectNoticesUseCase(
             source=source,
-            normalizer=BizinfoNoticeNormalizer(keywords, timezone=settings.app.timezone),
+            normalizer=normalizer,
             repository=repository,
             diagnostic_reporter=diagnostic_reporter,
         )
@@ -283,6 +290,53 @@ def _build_bizinfo_collect_source(settings: Settings):
     raise ConfigurationAppError(
         f"Unsupported collect source_mode: {settings.runtime.source_mode}"
     )
+
+
+def _build_g2b_collect_source(settings: Settings):
+    if settings.runtime.source_mode == "fixture":
+        return G2BFixtureSourceAdapter(settings.sources.g2b.fixture_path)
+    if settings.runtime.source_mode == "api":
+        return G2BSourceAdapter(
+            G2BApiHttpClient(
+                endpoint=settings.sources.g2b.endpoint,
+                api_key=settings.sources.g2b.cert_key,
+                timeout_seconds=settings.sources.g2b.timeout_seconds,
+                retry_count=settings.sources.g2b.retry_count,
+                retry_backoff_seconds=settings.sources.g2b.retry_backoff_seconds,
+                page_size=settings.sources.g2b.page_size,
+                inquiry_division=settings.sources.g2b.inquiry_division,
+                inquiry_window_days=settings.sources.g2b.inquiry_window_days,
+                timezone_name=settings.app.timezone,
+            )
+        )
+    raise ConfigurationAppError(
+        f"Unsupported collect source_mode: {settings.runtime.source_mode}"
+    )
+
+
+def _build_collect_stack(settings: Settings, keywords: KeywordSet):
+    collect_stacks: list[tuple[object, object]] = []
+    if settings.sources.bizinfo.enabled:
+        collect_stacks.append(
+            (
+                _build_bizinfo_collect_source(settings),
+                BizinfoNoticeNormalizer(keywords, timezone=settings.app.timezone),
+            )
+        )
+    if settings.sources.g2b.enabled:
+        collect_stacks.append(
+            (
+                _build_g2b_collect_source(settings),
+                G2BNoticeNormalizer(keywords, timezone=settings.app.timezone),
+            )
+        )
+    if not collect_stacks:
+        raise ConfigurationAppError("No collect source is enabled.")
+    if len(collect_stacks) > 1:
+        raise ConfigurationAppError(
+            "Collect currently supports one enabled source at a time. Disable either sources.bizinfo or sources.g2b."
+        )
+    return collect_stacks[0]
 
 
 def _run_export(settings: Settings, run_id: str, sink: ConsoleLogSink) -> RunSummary:

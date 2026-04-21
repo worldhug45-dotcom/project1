@@ -113,7 +113,7 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] 기업마당 조회 어댑터 인터페이스 초안 작성
 - [ ] 나라장터 조회 어댑터 인터페이스 초안 작성
 - [x] 기업마당 샘플 응답 fixture 확보
-- [ ] 나라장터 샘플 응답 fixture 확보
+- [x] 나라장터 샘플 응답 fixture 확보
 - [x] 외부 API 응답 DTO 초안 작성
 - [x] fixture 기반 DTO 파싱 테스트 초안 작성
 - [x] 기업마당 실제 API 클라이언트 구현
@@ -263,3 +263,18 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [ ] `observe` 웹 액션 연결
 - [ ] 웹 전용 job registry 또는 실행 중 상태 표시 구조 구현
 - [ ] `/health` endpoint와 Docker healthcheck 구현
+
+## 16단계: 나라장터 1차 수집 경로
+
+- [x] 나라장터 fixture 파일 구조 정의
+- [x] 나라장터 Raw DTO 정의
+- [x] 나라장터 parser 구현
+- [x] 나라장터 fixture source adapter 구현
+- [x] 나라장터 normalizer 구현
+- [x] 나라장터 fixture 기반 collect Use Case 검증
+- [x] CLI collect에서 나라장터 fixture 경로 선택 가능하도록 연결
+- [x] 나라장터 실제 API client skeleton 추가
+- [x] `PROJECT1_G2B_API_KEY` 환경 변수 주입 경로 추가
+- [x] `settings.sources.g2b`와 실제 구현 연결
+- [ ] 나라장터 실제 API 수동 collect 검증
+- [ ] bizinfo + g2b 다중 source collect orchestration 확장

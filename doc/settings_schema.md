@@ -42,7 +42,10 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | `sources.bizinfo.enabled` | `PROJECT1_SOURCES_BIZINFO_ENABLED` |
 | `sources.bizinfo.endpoint` | `PROJECT1_SOURCES_BIZINFO_ENDPOINT` |
 | `sources.bizinfo.fixture_path` | `PROJECT1_SOURCES_BIZINFO_FIXTURE_PATH` |
+| `sources.g2b.fixture_path` | `PROJECT1_SOURCES_G2B_FIXTURE_PATH` |
 | `sources.g2b.endpoint` | `PROJECT1_SOURCES_G2B_ENDPOINT` |
+| `sources.g2b.inquiry_division` | `PROJECT1_SOURCES_G2B_INQUIRY_DIVISION` |
+| `sources.g2b.inquiry_window_days` | `PROJECT1_SOURCES_G2B_INQUIRY_WINDOW_DAYS` |
 | `storage.database_path` | `PROJECT1_STORAGE_DATABASE_PATH` |
 | `export.output_dir` | `PROJECT1_EXPORT_OUTPUT_DIR` |
 | `logging.level` | `PROJECT1_LOGGING_LEVEL` |
@@ -110,15 +113,20 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 | --- | --- | --- | --- | --- |
 | `sources.g2b.enabled` | 선택 | `bool` | `true` | 나라장터 수집 활성화 |
 | `sources.g2b.endpoint` | 필수 | `str` | 없음 | 입찰공고정보서비스 엔드포인트 |
+| `sources.g2b.fixture_path` | 조건부 필수 | `str` | 없음 | `runtime.source_mode = "fixture"`에서 사용할 나라장터 fixture 경로 |
+| `sources.g2b.cert_key` | 환경 변수 전용 | `str` | 없음 | `runtime.source_mode = "api"`에서 `PROJECT1_G2B_API_KEY`로만 주입하는 나라장터 서비스키 |
 | `sources.g2b.timeout_seconds` | 선택 | `int` | `10` | 요청 타임아웃 |
 | `sources.g2b.retry_count` | 선택 | `int` | `3` | 재시도 횟수 |
 | `sources.g2b.retry_backoff_seconds` | 선택 | `int` | `2` | 재시도 대기 시간 |
 | `sources.g2b.page_size` | 선택 | `int` | `20` | 조회 건수 |
+| `sources.g2b.inquiry_division` | 선택 | `str` | `"1"` | 조회구분. 1차 MVP는 등록일시(`1`) 또는 변경일시(`3`)만 지원 |
+| `sources.g2b.inquiry_window_days` | 선택 | `int` | `7` | `inqryDiv = "1"` 또는 `"3"`일 때 최근 조회 기간(일) |
 
 `runtime.source_mode = "api"`일 때 활성화된 소스의 `endpoint`는 필수이다.  
 기업마당 실제 API 모드에서는 `PROJECT1_BIZINFO_CERT_KEY`가 필수이며, 이 값은 설정 파일이 아니라 환경 변수에서만 읽는다.  
-`runtime.source_mode = "fixture"`일 때 기업마당 수집은 `sources.bizinfo.fixture_path`를 사용하며, 실제 외부 API endpoint 검증은 수행하지 않는다.  
+`runtime.source_mode = "fixture"`일 때 활성화된 소스는 각자의 `fixture_path`를 사용하며, 실제 외부 API endpoint 검증은 수행하지 않는다.  
 비활성화된 소스의 `endpoint`는 검증 대상에서 제외할 수 있다.
+나라장터 실제 API 모드에서는 `sources.g2b.inquiry_division = "1"`을 기본값으로 사용하며, 이 경우 `inqryBgnDt`와 `inqryEndDt`는 현재 시각 기준 최근 `inquiry_window_days` 범위로 자동 계산한다.
 
 ## 9. keywords 섹션
 
@@ -197,7 +205,8 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 
 - `api` source mode에서 활성화된 소스의 `endpoint`
 - `api` source mode에서 `sources.bizinfo.enabled = true`이면 `PROJECT1_BIZINFO_CERT_KEY`
-- `fixture` source mode에서 `sources.bizinfo.fixture_path`
+- `api` source mode에서 `sources.g2b.enabled = true`이면 `PROJECT1_G2B_API_KEY`
+- `fixture` source mode에서 활성화된 각 소스의 `fixture_path`
 - `storage.type`
 - `storage.database_path`
 - `export.output_dir`
@@ -215,10 +224,13 @@ CLI 인자는 실행 액션, 환경명, 설정 파일 경로처럼 실행 시점
 - `app.timezone`이 유효한 timezone 이름이 아니다.
 - 활성화된 소스의 `endpoint`가 비어 있다.
 - `runtime.source_mode`가 `api`인데 `PROJECT1_BIZINFO_CERT_KEY`가 비어 있다.
-- `runtime.source_mode`가 `fixture`인데 `sources.bizinfo.fixture_path`가 비어 있거나 존재하지 않는다.
+- `runtime.source_mode`가 `api`인데 `PROJECT1_G2B_API_KEY`가 비어 있다.
+- `runtime.source_mode`가 `fixture`인데 활성화된 소스의 `fixture_path`가 비어 있거나 존재하지 않는다.
 - `timeout_seconds`가 1보다 작다.
 - `retry_count`가 0보다 작다.
 - `page_size`가 1보다 작다.
+- `sources.g2b.inquiry_window_days`가 0보다 작다.
+- `sources.g2b.inquiry_division`이 1차 MVP에서 지원하지 않는 값이다.
 - `keywords.core`, `keywords.supporting`, `keywords.exclude` 중 하나라도 비어 있다.
 - `storage.type`이 지원하지 않는 값이다.
 - `storage.database_path`가 비어 있다.
@@ -251,8 +263,9 @@ retry_backoff_seconds = 2
 page_size = 20
 
 [sources.g2b]
-enabled = true
-endpoint = "https://apis.data.go.kr/..."
+enabled = false
+endpoint = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
+fixture_path = "tests/fixtures/g2b/bid_notices.json"
 timeout_seconds = 10
 retry_count = 3
 retry_backoff_seconds = 2

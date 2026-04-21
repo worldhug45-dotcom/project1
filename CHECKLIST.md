@@ -67,7 +67,7 @@
 - [x] 기업마당 조회 인터페이스가 정의되었다.
 - [x] 나라장터 조회 인터페이스가 정의되었다.
 - [x] 기업마당 샘플 응답 fixture가 확보되었다.
-- [ ] 나라장터 샘플 응답 fixture가 확보되었다.
+- [x] 나라장터 샘플 응답 fixture가 확보되었다.
 - [x] 외부 API DTO와 내부 `Notice` 모델이 분리되었다.
 - [x] 샘플 응답 fixture 기반으로 DTO 파싱을 검증할 수 있다.
 - [x] 실제 API JSON `jsonArray.item` 응답을 DTO로 파싱할 수 있다.
@@ -135,6 +135,7 @@
 
 - [x] 공고 수집 Use Case 계약이 정의되었다.
 - [x] 기업마당 fixture 기반 collect Use Case 초안이 구현되었다.
+- [x] 나라장터 fixture 기반 collect Use Case 초안이 구현되었다.
 - [x] 엑셀 산출 Use Case 계약이 정의되었다.
 - [x] 소스 어댑터 Port가 정의되었다.
 - [x] 저장소 Port가 정의되었다.
@@ -146,6 +147,7 @@
 - [x] export 결과가 `RunSummary.exported_files`로 집계된다.
 - [x] export Use Case는 저장소 조회와 exporter 호출 orchestration만 담당한다.
 - [x] CLI collect 액션이 기업마당 fixture collect Use Case에 연결된다.
+- [x] CLI collect 액션이 나라장터 fixture collect Use Case에 연결된다.
 - [x] CLI collect 액션이 기업마당 실제 API collect Use Case에 연결된다.
 - [x] CLI export 액션이 SQLite 저장소와 실제 Excel exporter에 연결된다.
 
