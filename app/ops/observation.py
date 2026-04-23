@@ -40,9 +40,7 @@ class NoticeObservationExample:
             matched_supporting_keywords=_tuple_of_strings(
                 metadata.get("matched_supporting_keywords")
             ),
-            matched_excluded_keywords=_tuple_of_strings(
-                metadata.get("matched_excluded_keywords")
-            ),
+            matched_excluded_keywords=_tuple_of_strings(metadata.get("matched_excluded_keywords")),
             detail_message=_string_or_none(metadata.get("detail_message")),
         )
 
@@ -108,10 +106,7 @@ class CollectObservationRecord:
         if isinstance(raw_skip_reason_counts, dict):
             skip_reason_counts = tuple(
                 sorted(
-                    (
-                        (str(reason), int(count))
-                        for reason, count in raw_skip_reason_counts.items()
-                    ),
+                    ((str(reason), int(count)) for reason, count in raw_skip_reason_counts.items()),
                     key=lambda item: item[0],
                 )
             )
@@ -147,17 +142,12 @@ def parse_collect_observation_lines(
 ) -> CollectObservationRecord:
     """Parse CLI collect output lines into one aggregated observation record."""
 
-    events = [
-        json.loads(line)
-        for line in lines
-        if line.strip()
-    ]
+    events = [json.loads(line) for line in lines if line.strip()]
     summary = next(
         (
             event
             for event in events
-            if event.get("summary_type") == "run_summary"
-            and event.get("action") == "collect"
+            if event.get("summary_type") == "run_summary" and event.get("action") == "collect"
         ),
         None,
     )
@@ -168,8 +158,7 @@ def parse_collect_observation_lines(
         (
             event
             for event in events
-            if event.get("event_type") == "run_started"
-            and event.get("action") == "collect"
+            if event.get("event_type") == "run_started" and event.get("action") == "collect"
         ),
         None,
     )
@@ -302,7 +291,7 @@ def render_observation_log(
             "## 실행 명령",
             "",
             "```powershell",
-            "$env:PROJECT1_BIZINFO_CERT_KEY = \"발급받은_인증키\"",
+            '$env:PROJECT1_BIZINFO_CERT_KEY = "발급받은_인증키"',
             f"python scripts/observe_bizinfo_collect.py --config {config_path}",
             "```",
             "",
@@ -395,7 +384,7 @@ def _render_aggregate_summary(records: tuple[CollectObservationRecord, ...]) -> 
         lines.append("- 3일 누적 관찰이 완료되었다.")
     lines.extend(
         [
-        "- no_keyword_match 상위 skipped 제목:",
+            "- no_keyword_match 상위 skipped 제목:",
         ]
     )
     if no_keyword_titles:

@@ -19,10 +19,12 @@ class WebKeywordsEndpointTests(TestCase):
             override_path.write_text(
                 """
 [keywords_override]
-add_core = ["보안 AI"]
-add_supporting = ["국방기술"]
-remove_supporting = ["클라우드"]
-add_exclude = ["공모전"]
+add_core = ["security-ai"]
+add_supporting = ["integration"]
+remove_supporting = ["cloud"]
+add_exclude = ["event"]
+remove_core = []
+remove_exclude = []
 """,
                 encoding="utf-8",
             )
@@ -45,9 +47,12 @@ add_exclude = ["공모전"]
         self.assertEqual(payload["keyword_counts"]["supporting"], 2)
         self.assertEqual(payload["keyword_counts"]["exclude"], 3)
         self.assertEqual(payload["keyword_counts"]["total"], 8)
-        self.assertEqual(payload["keywords"]["core"], ["AI", "DX", "보안 AI"])
-        self.assertEqual(payload["keywords"]["supporting"], ["데이터", "국방기술"])
-        self.assertEqual(payload["keywords"]["exclude"], ["채용", "행사", "공모전"])
+        self.assertEqual(payload["keywords"]["core"], ["AI", "DX", "security-ai"])
+        self.assertEqual(payload["keywords"]["supporting"], ["data", "integration"])
+        self.assertEqual(payload["keywords"]["exclude"], ["job", "sales", "event"])
+        self.assertEqual(payload["save_meta"]["status"], "not_available")
+        self.assertEqual(payload["save_meta"]["changed_group"], "not available")
+        self.assertEqual(payload["save_meta"]["target_path"], str(override_path))
 
     def test_keywords_endpoint_falls_back_to_config_when_override_is_missing(self) -> None:
         with temporary_directory() as directory:
@@ -73,8 +78,58 @@ add_exclude = ["공모전"]
         self.assertEqual(payload["last_loaded_path"], str(config_path))
         self.assertEqual(payload["keyword_counts"]["total"], 6)
         self.assertEqual(payload["keywords"]["core"], ["AI", "DX"])
-        self.assertEqual(payload["keywords"]["supporting"], ["데이터", "클라우드"])
-        self.assertEqual(payload["keywords"]["exclude"], ["채용", "행사"])
+        self.assertEqual(payload["keywords"]["supporting"], ["data", "cloud"])
+        self.assertEqual(payload["keywords"]["exclude"], ["job", "sales"])
+        self.assertEqual(payload["save_meta"]["status"], "not_available")
+        self.assertEqual(
+            payload["save_meta"]["target_path"],
+            str(config_path.with_name("keywords.override.toml")),
+        )
+
+    def test_keywords_endpoint_reports_persisted_save_meta(self) -> None:
+        with temporary_directory() as directory:
+            root = Path(directory)
+            config_path = _write_fixture_config(root)
+            override_path = root / "keywords.override.toml"
+            override_path.write_text(
+                """
+[keywords_override]
+add_core = ["platform"]
+add_supporting = []
+add_exclude = []
+remove_core = []
+remove_supporting = []
+remove_exclude = []
+""",
+                encoding="utf-8",
+            )
+            override_path.with_suffix(".meta.json").write_text(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "saved_at": "2026-04-22T10:11:12+00:00",
+                        "target_path": str(override_path),
+                        "changed_group": "core",
+                        "error_message": None,
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+
+            status_code, payload = _fetch_keywords(
+                DashboardServerSettings(
+                    host="127.0.0.1",
+                    port=0,
+                    config_path=config_path,
+                )
+            )
+
+        self.assertEqual(status_code, 200)
+        self.assertEqual(payload["save_meta"]["status"], "success")
+        self.assertEqual(payload["save_meta"]["saved_at"], "2026-04-22T10:11:12+00:00")
+        self.assertEqual(payload["save_meta"]["target_path"], str(override_path))
+        self.assertEqual(payload["save_meta"]["changed_group"], "core")
 
     def test_keywords_endpoint_reports_error_when_settings_cannot_be_loaded(self) -> None:
         with temporary_directory() as directory:
@@ -95,6 +150,7 @@ add_exclude = ["공모전"]
         self.assertEqual(payload["override_path"], "not available")
         self.assertFalse(payload["override_exists"])
         self.assertEqual(payload["keyword_counts"]["total"], 0)
+        self.assertEqual(payload["save_meta"]["status"], "not_available")
 
 
 def _fetch_keywords(settings: DashboardServerSettings) -> tuple[int, dict[str, object]]:
@@ -132,8 +188,8 @@ enabled = false
 
 [keywords]
 core = ["AI", "DX"]
-supporting = ["데이터", "클라우드"]
-exclude = ["채용", "행사"]
+supporting = ["data", "cloud"]
+exclude = ["job", "sales"]
 
 [storage]
 type = "sqlite"

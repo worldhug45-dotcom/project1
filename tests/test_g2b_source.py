@@ -71,11 +71,11 @@ class G2BSourceTests(TestCase):
                                         "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK100&bidPbancOrd=000",
                                         "bidNtceDate": "2026-04-21",
                                         "bidClseDate": "2026-05-02 10:00",
-                                        "bidNtceDtlInfo": "AI and cloud maintenance"
+                                        "bidNtceDtlInfo": "AI and cloud maintenance",
                                     }
                                 ]
                             }
-                        }
+                        },
                     }
                 }
             )
@@ -121,10 +121,10 @@ class G2BSourceTests(TestCase):
                                     "bidNtceOrd": "000",
                                     "bidNtceNm": "Cloud maintenance bid",
                                     "dminsttNm": "MSS",
-                                    "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK200&bidPbancOrd=000"
+                                    "bidNtceDtlUrl": "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=R26BK200&bidPbancOrd=000",
                                 }
                             ]
-                        }
+                        },
                     }
                 }
             )
@@ -161,7 +161,7 @@ class G2BSourceTests(TestCase):
                     "response": {
                         "header": {
                             "resultCode": "30",
-                            "resultMsg": "SERVICE KEY IS NOT REGISTERED ERROR."
+                            "resultMsg": "SERVICE KEY IS NOT REGISTERED ERROR.",
                         }
                     }
                 }

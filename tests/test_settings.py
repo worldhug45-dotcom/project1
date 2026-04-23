@@ -152,6 +152,40 @@ exclude = ["채용"]
 
         self.assertIn(BIZINFO_CERT_KEY_ENV_VAR, str(context.exception))
 
+    def test_collect_api_mode_reads_bizinfo_cert_key_from_local_env_file(self) -> None:
+        with temporary_directory() as directory:
+            root = Path(directory)
+            config_path = root / "settings.toml"
+            env_path = root / ".env.local"
+            config_path.write_text(
+                """
+[sources.bizinfo]
+enabled = true
+endpoint = "https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do"
+
+[sources.g2b]
+enabled = false
+
+[runtime]
+action = "collect"
+source_mode = "api"
+
+[keywords]
+core = ["AI"]
+supporting = ["데이터"]
+exclude = ["채용"]
+""",
+                encoding="utf-8",
+            )
+            env_path.write_text(
+                f"{BIZINFO_CERT_KEY_ENV_VAR}=from-local-env-file\n",
+                encoding="utf-8",
+            )
+
+            settings = load_settings(config_path, environ={})
+
+        self.assertEqual(settings.sources.bizinfo.cert_key, "from-local-env-file")
+
     def test_collect_api_mode_requires_g2b_api_key_from_env(self) -> None:
         with temporary_directory() as directory:
             config_path = Path(directory) / "settings.toml"

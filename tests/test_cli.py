@@ -440,7 +440,11 @@ class CliSkeletonTests(TestCase):
             config_path = _write_collect_api_config(Path(directory))
 
             with patch.dict(os.environ, {}, clear=True):
-                with redirect_stdout(stdout), redirect_stderr(stderr), self.assertRaises(SystemExit):
+                with (
+                    redirect_stdout(stdout),
+                    redirect_stderr(stderr),
+                    self.assertRaises(SystemExit),
+                ):
                     main(
                         [
                             "--config",
@@ -471,7 +475,11 @@ class CliSkeletonTests(TestCase):
             config_path = _write_g2b_collect_api_config(Path(directory))
 
             with patch.dict(os.environ, {}, clear=True):
-                with redirect_stdout(stdout), redirect_stderr(stderr), self.assertRaises(SystemExit):
+                with (
+                    redirect_stdout(stdout),
+                    redirect_stderr(stderr),
+                    self.assertRaises(SystemExit),
+                ):
                     main(
                         [
                             "--config",

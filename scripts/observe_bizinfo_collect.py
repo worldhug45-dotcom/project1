@@ -20,6 +20,7 @@ from app.ops import (
     save_observation_history,
     upsert_observation_record,
 )
+from app.infrastructure.local_env import build_runtime_environ
 
 
 DEFAULT_CONFIG_PATH = Path("config/settings.local.toml")
@@ -95,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         "--collect-diagnostics",
     ]
     snapshot_db_path = _build_snapshot_db_path(args.snapshot_db_dir)
-    child_environ = os.environ.copy()
+    child_environ = build_runtime_environ(os.environ.copy(), config_path=args.config)
     child_environ["PROJECT1_STORAGE_DATABASE_PATH"] = str(snapshot_db_path)
     child_environ["PYTHONIOENCODING"] = "utf-8"
     child_environ["PYTHONUTF8"] = "1"

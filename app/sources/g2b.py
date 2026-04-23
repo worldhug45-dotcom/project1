@@ -18,10 +18,10 @@ from app.domain import NoticeSource
 from app.ops import ConfigurationAppError, FatalError, RetryableError
 
 
-G2B_BID_API_ENDPOINT = "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
-G2B_NOTICE_DETAIL_URL = (
-    "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo={bid_notice_no}&bidPbancOrd={bid_notice_ord}"
+G2B_BID_API_ENDPOINT = (
+    "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
 )
+G2B_NOTICE_DETAIL_URL = "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo={bid_notice_no}&bidPbancOrd={bid_notice_ord}"
 G2B_API_KEY_REQUIRED_MESSAGE = (
     "나라장터 API 서비스키가 필요합니다. PROJECT1_G2B_API_KEY를 설정하세요."
 )
@@ -82,9 +82,7 @@ class G2BApiHttpClient:
                 "G2B inquiry_division currently supports only '1' or '3' in the MVP."
             )
         if self.inquiry_window_days < 0:
-            raise ConfigurationAppError(
-                "G2B inquiry_window_days must be 0 or greater."
-            )
+            raise ConfigurationAppError("G2B inquiry_window_days must be 0 or greater.")
 
     def get_json(self) -> dict[str, Any]:
         request = Request(
@@ -362,11 +360,7 @@ def _looks_like_auth_http_error(status_code: int, error_body: str) -> bool:
     if status_code in {401, 403}:
         return True
     body_upper = error_body.upper()
-    return (
-        "SERVICE KEY" in body_upper
-        or "UNAUTHORIZED" in body_upper
-        or "인증키" in error_body
-    )
+    return "SERVICE KEY" in body_upper or "UNAUTHORIZED" in body_upper or "인증키" in error_body
 
 
 def _raise_for_g2b_payload_error(payload: dict[str, Any]) -> None:

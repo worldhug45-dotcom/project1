@@ -1,0 +1,24 @@
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [
+    ".git",
+    ".test_tmp",
+    "data",
+    "output",
+]
+
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/manual_run.py" = ["E402"]
+"scripts/observe_bizinfo_collect.py" = ["E402"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["app"]
+pretty = true
+show_error_codes = true
+warn_unused_configs = true

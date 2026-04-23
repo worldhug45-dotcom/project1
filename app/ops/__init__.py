@@ -35,6 +35,15 @@ from app.ops.observation import (
     save_observation_history,
     upsert_observation_record,
 )
+from app.ops.operator_settings import (
+    OperatorManagedSource,
+    OperatorSettingsSaveMeta,
+    OperatorSettingsSnapshot,
+    build_unavailable_settings_snapshot,
+    load_operator_settings_snapshot,
+    save_operator_api_keys,
+    save_operator_sources,
+)
 from app.ops.operator_status import (
     OperatorStatusSnapshot,
     display_path,
@@ -62,7 +71,10 @@ __all__ = [
     "NonFatalError",
     "OperatorHealthSnapshot",
     "OperatorKeywordsSnapshot",
+    "OperatorManagedSource",
     "OperatorStatusSnapshot",
+    "OperatorSettingsSaveMeta",
+    "OperatorSettingsSnapshot",
     "Project1Error",
     "RetryableError",
     "RunStatus",
@@ -89,4 +101,8 @@ __all__ = [
     "upsert_observation_record",
     "build_unavailable_health_snapshot",
     "build_unavailable_keywords_snapshot",
+    "build_unavailable_settings_snapshot",
+    "load_operator_settings_snapshot",
+    "save_operator_api_keys",
+    "save_operator_sources",
 ]

@@ -1,7 +1,6 @@
 import io
 import subprocess
 from contextlib import redirect_stdout
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -234,9 +233,21 @@ add_supporting = ["국방기술"]
 
     def test_configuration_error_prints_next_checks(self) -> None:
         stdout = io.StringIO()
+        with temporary_directory() as directory:
+            state_path = Path(directory) / "manual-state.json"
 
-        with redirect_stdout(stdout):
-            exit_code = main(["collect", "--config", "missing-settings.toml"])
+            with redirect_stdout(stdout):
+                exit_code = main(
+                    [
+                        "collect",
+                        "--config",
+                        "missing-settings.toml",
+                        "--state-path",
+                        str(state_path),
+                    ]
+                )
+
+            state_payload = state_path.read_text(encoding="utf-8")
 
         output = stdout.getvalue()
         self.assertEqual(exit_code, 2)
@@ -244,6 +255,10 @@ add_supporting = ["국방기술"]
         self.assertIn("next_checks:", output)
         self.assertIn("Check that config_path exists", output)
         self.assertIn("PROJECT1_KEYWORDS_OVERRIDE_PATH", output)
+        self.assertIn('"status": "config_error"', state_payload)
+        self.assertIn(
+            '"error_message": "Config file does not exist: missing-settings.toml"', state_payload
+        )
 
     def test_runtime_failure_prints_next_checks(self) -> None:
         stdout = io.StringIO()

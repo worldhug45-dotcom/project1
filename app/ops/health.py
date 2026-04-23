@@ -38,16 +38,18 @@ def load_operator_health_snapshot(
     sqlite_db_path = "not available"
     export_output_dir = "not available"
     settings_loaded = False
+    loaded_settings = None
 
     try:
-        settings = load_settings(config_path, cli_overrides={"action": "export"})
+        loaded_settings = load_settings(config_path, cli_overrides={"action": "export"})
     except ConfigurationError:
-        settings = None
+        pass
     else:
         settings_loaded = True
-        app_name = settings.app.name
-        sqlite_db_path = str(settings.storage.database_path)
-        export_output_dir = str(settings.export.output_dir)
+        if loaded_settings is not None:
+            app_name = loaded_settings.app.name
+            sqlite_db_path = str(loaded_settings.storage.database_path)
+            export_output_dir = str(loaded_settings.export.output_dir)
 
     state_file_accessible = _is_state_file_accessible(state_path)
     observation_history_exists = history_path.exists() and history_path.is_file()

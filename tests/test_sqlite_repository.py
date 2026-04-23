@@ -13,7 +13,17 @@ from tests.temp_utils import temporary_directory
 FIXTURE_PATH = Path("tests/fixtures/bizinfo/support_notices.json")
 KEYWORDS = KeywordSet(
     core=("AI", "인공지능", "디지털전환", "DX", "디지털트윈", "시스템 통합", "SI", "정보화"),
-    supporting=("데이터", "빅데이터", "클라우드", "인프라", "서버", "네트워크", "보안", "IT서비스", "유지보수"),
+    supporting=(
+        "데이터",
+        "빅데이터",
+        "클라우드",
+        "인프라",
+        "서버",
+        "네트워크",
+        "보안",
+        "IT서비스",
+        "유지보수",
+    ),
     exclude=("채용", "행사", "교육", "경진대회", "복지", "문화", "비관련 제조 일반"),
 )
 

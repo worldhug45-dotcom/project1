@@ -22,7 +22,9 @@ class KeywordMatcherTests(TestCase):
         self.assertTrue(result.eligible)
         self.assertEqual(result.primary_domain.value, "infra")
         self.assertEqual(tuple(domain.value for domain in result.business_domains), ("infra",))
-        self.assertEqual(tuple(keyword.keyword for keyword in result.match_keywords), ("사물인터넷", "IoT"))
+        self.assertEqual(
+            tuple(keyword.keyword for keyword in result.match_keywords), ("사물인터넷", "IoT")
+        )
 
     def test_ict_and_sw_keywords_map_to_si_domain(self) -> None:
         result = evaluate_keywords(

@@ -164,4 +164,3 @@ def _normalize_url(value: str) -> str:
     parsed = urlsplit(value.strip())
     path = parsed.path.rstrip("/") or parsed.path
     return urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), path, parsed.query, ""))
-

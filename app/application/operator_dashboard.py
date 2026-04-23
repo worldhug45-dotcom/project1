@@ -171,7 +171,11 @@ class OperatorCollectService:
 
             if result.succeeded:
                 if next_state.status == "idle":
-                    next_state = replace(next_state, status="finished")
+                    next_state = replace(
+                        next_state,
+                        status="finished",
+                        recorded_at=now_isoformat(),
+                    )
                 self._state = replace(next_state, error_message=None)
                 return
 
@@ -181,6 +185,7 @@ class OperatorCollectService:
                     next_state,
                     status="failed",
                     error_count=max(next_state.error_count, 1),
+                    recorded_at=now_isoformat(),
                 )
             else:
                 next_state = replace(next_state, status="failed")
@@ -243,6 +248,7 @@ class OperatorCollectService:
             db_path=str(payload.get("db_path", db_path)),
             recorded_at=recorded_at,
             source_mode=source_mode,
+            error_message=_payload_error_message(payload),
         )
 
     def _should_replace_with_snapshot(self, snapshot_state: CollectControlState) -> bool:
@@ -324,13 +330,21 @@ class OperatorExportService:
 
             if result.succeeded:
                 if next_state.status == "idle":
-                    next_state = replace(next_state, status="finished")
+                    next_state = replace(
+                        next_state,
+                        status="finished",
+                        recorded_at=now_isoformat(),
+                    )
                 self._state = replace(next_state, error_message=None)
                 return
 
             error_message = _build_error_message(result)
             if next_state.status == "idle":
-                next_state = replace(next_state, status="failed")
+                next_state = replace(
+                    next_state,
+                    status="failed",
+                    recorded_at=now_isoformat(),
+                )
             else:
                 next_state = replace(next_state, status="failed")
             self._state = replace(next_state, error_message=error_message)
@@ -390,6 +404,7 @@ class OperatorExportService:
             ),
             export_output_dir=str(payload.get("export_output_dir", export_output_dir)),
             recorded_at=recorded_at,
+            error_message=_payload_error_message(payload),
         )
 
     def _should_replace_with_snapshot(self, snapshot_state: ExportControlState) -> bool:
@@ -471,7 +486,11 @@ class OperatorObserveService:
 
             if result.succeeded:
                 if next_state.status == "idle":
-                    next_state = replace(next_state, status="finished")
+                    next_state = replace(
+                        next_state,
+                        status="finished",
+                        recorded_at=now_isoformat(),
+                    )
                 self._state = replace(next_state, error_message=None)
                 return
 
@@ -481,6 +500,7 @@ class OperatorObserveService:
                     next_state,
                     status="failed",
                     error_count=max(next_state.error_count, 1),
+                    recorded_at=now_isoformat(),
                 )
             else:
                 next_state = replace(
@@ -567,6 +587,7 @@ class OperatorObserveService:
             ),
             latest_raw_jsonl_path=str(payload.get("latest_raw_jsonl_path", "not available")),
             recorded_at=recorded_at,
+            error_message=_payload_error_message(payload),
         )
 
     def _should_replace_with_snapshot(self, snapshot_state: ObserveControlState) -> bool:
@@ -602,7 +623,27 @@ def _build_error_message(
     stderr = result.stderr.strip()
     if stderr:
         return stderr.splitlines()[-1]
+
+    stdout_error = _stdout_error_message(result.stdout)
+    if stdout_error is not None:
+        return stdout_error
+
     stdout = result.stdout.strip()
     if stdout:
         return stdout.splitlines()[-1]
     return "Action execution failed."
+
+
+def _payload_error_message(payload: dict[str, object]) -> str | None:
+    value = payload.get("error_message")
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _stdout_error_message(stdout: str) -> str | None:
+    for line in stdout.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- error: "):
+            return stripped.removeprefix("- error: ").strip()
+    return None

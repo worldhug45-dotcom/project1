@@ -167,9 +167,7 @@ def main(argv: list[str] | None = None) -> int:
             status = summary.status
             print(_run_summary_json(summary))
         else:
-            print(
-                f"project1 action={action} env={settings.app.env} mode={settings.runtime.mode}"
-            )
+            print(f"project1 action={action} env={settings.app.env} mode={settings.runtime.mode}")
             print("CLI skeleton is ready; source, storage, export, and logging work follow.")
     except Exception as exc:
         error = classify_exception(exc)
@@ -218,9 +216,7 @@ def _run_collect(
     )
     source, normalizer = _build_collect_stack(settings, keywords)
     diagnostic_reporter = (
-        _build_collect_diagnostic_reporter(run_id, sink)
-        if emit_collect_diagnostics
-        else None
+        _build_collect_diagnostic_reporter(run_id, sink) if emit_collect_diagnostics else None
     )
     with SQLiteNoticeRepository(settings.storage.database_path) as repository:
         use_case = DefaultCollectNoticesUseCase(
@@ -287,9 +283,7 @@ def _build_bizinfo_collect_source(settings: Settings):
                 page_size=settings.sources.bizinfo.page_size,
             )
         )
-    raise ConfigurationAppError(
-        f"Unsupported collect source_mode: {settings.runtime.source_mode}"
-    )
+    raise ConfigurationAppError(f"Unsupported collect source_mode: {settings.runtime.source_mode}")
 
 
 def _build_g2b_collect_source(settings: Settings):
@@ -309,9 +303,7 @@ def _build_g2b_collect_source(settings: Settings):
                 timezone_name=settings.app.timezone,
             )
         )
-    raise ConfigurationAppError(
-        f"Unsupported collect source_mode: {settings.runtime.source_mode}"
-    )
+    raise ConfigurationAppError(f"Unsupported collect source_mode: {settings.runtime.source_mode}")
 
 
 def _build_collect_stack(settings: Settings, keywords: KeywordSet):

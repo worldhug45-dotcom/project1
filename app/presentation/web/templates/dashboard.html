@@ -3,15 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Project1 Operator Dashboard</title>
-  <link rel="stylesheet" href="/static/dashboard.css">
+  <title>Crawling Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css?v=20260423-2">
 </head>
 <body
+  data-page="__CURRENT_PAGE__"
   data-status-url="__STATUS_API_URL__"
   data-keywords-url="__KEYWORDS_API_URL__"
+  data-settings-url="__SETTINGS_API_URL__"
   data-keywords-core-save-url="__KEYWORDS_CORE_SAVE_URL__"
   data-keywords-supporting-save-url="__KEYWORDS_SUPPORTING_SAVE_URL__"
   data-keywords-exclude-save-url="__KEYWORDS_EXCLUDE_SAVE_URL__"
+  data-settings-sources-save-url="__SETTINGS_SOURCES_SAVE_URL__"
+  data-settings-api-keys-save-url="__SETTINGS_API_KEYS_SAVE_URL__"
   data-health-url="__HEALTH_API_URL__"
   data-collect-url="__COLLECT_ACTION_URL__"
   data-export-url="__EXPORT_ACTION_URL__"
@@ -21,331 +25,612 @@
   <div class="ambient ambient-b"></div>
   <div class="ambient ambient-c"></div>
 
-  <main class="dashboard-shell">
-    <section class="health-strip glass-panel">
-      <div class="health-strip-head">
-        <div>
-          <p class="section-kicker">Health Snapshot</p>
-          <h2 class="health-title">Operator Runtime Health</h2>
-        </div>
-        <span id="health-badge" class="status-pill status-neutral">loading</span>
+  <div class="dashboard-shell">
+    <aside class="operator-sidebar glass-panel">
+      <div class="operator-brand">
+        <p class="section-kicker" data-i18n="brand.kicker">PROJECT1</p>
+        <h1 class="operator-brand-title" data-i18n="brand.title">크롤링 대시보드</h1>
+        <p class="hint" data-i18n="brand.subtitle">내부 운영 솔루션</p>
       </div>
-      <div class="health-summary-grid">
-        <article class="health-item">
-          <span class="label">App name</span>
-          <strong id="health-app-name">Loading...</strong>
-        </article>
-        <article class="health-item">
-          <span class="label">Server time</span>
-          <strong id="health-server-time">Loading...</strong>
-        </article>
-        <article class="health-item">
-          <span class="label">Settings loaded</span>
-          <strong id="health-settings-loaded">Loading...</strong>
-        </article>
-        <article class="health-item">
-          <span class="label">State file</span>
-          <strong id="health-state-file-accessible">Loading...</strong>
-        </article>
-        <article class="health-item">
-          <span class="label">Observation history</span>
-          <strong id="health-observation-history-exists">Loading...</strong>
-        </article>
-      </div>
-    </section>
 
-    <header class="hero glass-panel">
-      <div class="hero-copy">
-        <p class="eyebrow">Internal Operator Cockpit</p>
-        <h1 id="dashboard-title">Project1 Operator Dashboard</h1>
-        <p id="dashboard-subtitle" class="subtitle">
-          Stage 10 keeps the CLI engine as the source of truth, preserves the shared operator flow,
-          and allows core, supporting, and exclude keywords to be edited and saved through the existing override file.
+      <nav class="operator-nav" aria-label="Primary">
+        <a class="nav-link __DASHBOARD_ACTIVE__" href="/">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span data-i18n="nav.dashboard">대시보드</span>
+        </a>
+        <a class="nav-link __SETTINGS_ACTIVE__" href="/settings">
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span data-i18n="nav.settings">설정</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-status">
+        <span id="health-badge" class="status-pill status-neutral" data-i18n="status.loading">
+          불러오는 중
+        </span>
+        <p class="hint" data-i18n="sidebar.hint">
+          왼쪽 메뉴로 화면을 전환하고, 상단 상태 배지로 현재 운영 상태를 빠르게 확인한다.
         </p>
       </div>
-      <div class="hero-side">
-        <span id="read-only-badge" class="status-pill status-ready">COLLECT + EXPORT + OBSERVE ENABLED</span>
-        <button id="refresh-button" class="ghost-button" type="button">Refresh Status</button>
-        <p class="hint">This surface can show read-only health and keywords, then trigger collect, export, and observe while keeping the CLI engine as the shared source of truth.</p>
-      </div>
-    </header>
+    </aside>
 
-    <section class="hero-meta glass-panel">
-      <div class="meta-group">
-        <span class="meta-label">Snapshot Updated</span>
-        <strong id="updated-at">Loading...</strong>
-      </div>
-      <div class="meta-group">
-        <span class="meta-label">Mode</span>
-        <strong>Web health + keywords + collect + export + observe + shared status</strong>
-      </div>
-      <div class="meta-group">
-        <span class="meta-label">Scope</span>
-        <strong>Read-only health and keywords plus collect, export, and observe control with current paths and latest action summaries</strong>
-      </div>
-    </section>
-
-    <section id="error-banner" class="error-banner hidden" aria-live="polite"></section>
-
-    <section class="panel glass-panel keyword-panel reveal">
-      <div class="section-header keyword-header">
-        <div>
-          <p class="section-kicker">Keyword Snapshot</p>
-          <h2>Keyword Panel</h2>
-        </div>
-        <span id="keywords-status-badge" class="status-pill status-neutral">loading</span>
-      </div>
-      <p id="keywords-message" class="hint">
-        The dashboard reads the current effective keyword set from the existing settings and override structure. Core, supporting, and exclude keywords can be edited in this stage.
-      </p>
-      <div class="keyword-meta-grid">
-        <article class="keyword-meta-item">
-          <span class="label">Override path</span>
-          <strong id="keywords-override-path">Loading...</strong>
-        </article>
-        <article class="keyword-meta-item">
-          <span class="label">Override file</span>
-          <strong id="keywords-override-exists">Loading...</strong>
-        </article>
-        <article class="keyword-meta-item">
-          <span class="label">Last loaded from</span>
-          <strong id="keywords-last-loaded-path">Loading...</strong>
-        </article>
-        <article class="keyword-meta-item">
-          <span class="label">Total keywords</span>
-          <strong id="keywords-total-count">Loading...</strong>
-        </article>
-      </div>
-      <div class="keyword-groups-grid">
-        <article class="keyword-group-card keyword-group-card-editable">
-          <div class="keyword-group-head">
-            <h3>Core</h3>
-            <span id="keywords-core-count" class="status-pill status-ready">0</span>
-          </div>
-          <p class="keyword-editor-hint">
-            Add or remove core keywords, then save them back into the existing override structure.
+    <main class="operator-main">
+      <header class="page-header glass-panel">
+        <div class="page-copy">
+          <p id="page-kicker" class="section-kicker">운영 화면</p>
+          <h2 id="page-heading" class="page-heading">대시보드</h2>
+          <p id="page-subtitle" class="hint">
+            현재 운영 상태와 최근 실행 결과를 빠르게 확인할 수 있다.
           </p>
-          <div class="keyword-editor-toolbar">
-            <label class="keyword-editor-input" for="keywords-core-input">
-              <span class="sr-only">Core keyword</span>
-              <input
-                id="keywords-core-input"
-                type="text"
-                placeholder="Add core keyword"
-                autocomplete="off"
+        </div>
+        <div class="page-header-actions">
+          <article class="page-header-meta-card">
+            <span class="label" data-i18n="meta.updated">스냅샷 갱신 시각</span>
+            <strong id="updated-at">not available</strong>
+          </article>
+          <button
+            id="refresh-button"
+            class="ghost-button"
+            type="button"
+            data-i18n="buttons.refreshStatus"
+          >
+            상태 새로고침
+          </button>
+          <div
+            id="language-switcher"
+            class="language-switcher glass-panel"
+            role="group"
+            aria-label="Language switcher"
+          >
+            <span class="language-switcher-label" data-i18n="language.label">언어</span>
+            <div class="language-switcher-buttons">
+              <button
+                id="lang-ko-button"
+                class="language-button is-active"
+                type="button"
+                data-language="ko"
               >
-            </label>
-            <button
-              id="keywords-core-add-button"
-              class="ghost-button keyword-editor-button"
-              type="button"
-            >
-              Add
-            </button>
-            <button
-              id="keywords-core-save-button"
-              class="primary-button keyword-editor-button"
-              type="button"
-            >
-              Save
-            </button>
-          </div>
-          <p id="keywords-core-message" class="keyword-editor-message" aria-live="polite">
-            Core keywords are saved into <code>keywords.override.toml</code>. Supporting and exclude keep using their own panels.
-          </p>
-          <div id="keywords-core-list" class="keyword-chip-list keyword-chip-list-editable"></div>
-        </article>
-        <article class="keyword-group-card keyword-group-card-editable">
-          <div class="keyword-group-head">
-            <h3>Supporting</h3>
-            <span id="keywords-supporting-count" class="status-pill status-warning">0</span>
-          </div>
-          <p class="keyword-editor-hint">
-            Add or remove supporting keywords, then save them back into the existing override structure.
-          </p>
-          <div class="keyword-editor-toolbar">
-            <label class="keyword-editor-input" for="keywords-supporting-input">
-              <span class="sr-only">Supporting keyword</span>
-              <input
-                id="keywords-supporting-input"
-                type="text"
-                placeholder="Add supporting keyword"
-                autocomplete="off"
+                한국어
+              </button>
+              <button
+                id="lang-en-button"
+                class="language-button"
+                type="button"
+                data-language="en"
               >
-            </label>
-            <button
-              id="keywords-supporting-add-button"
-              class="ghost-button keyword-editor-button"
-              type="button"
-            >
-              Add
-            </button>
-            <button
-              id="keywords-supporting-save-button"
-              class="primary-button keyword-editor-button"
-              type="button"
-            >
-              Save
-            </button>
+                English
+              </button>
+            </div>
           </div>
-          <p id="keywords-supporting-message" class="keyword-editor-message" aria-live="polite">
-            Supporting keywords are saved into <code>keywords.override.toml</code>. Core and exclude keep using their own panels.
-          </p>
-          <div id="keywords-supporting-list" class="keyword-chip-list keyword-chip-list-editable"></div>
-        </article>
-        <article class="keyword-group-card keyword-group-card-editable">
-          <div class="keyword-group-head">
-            <h3>Exclude</h3>
-            <span id="keywords-exclude-count" class="status-pill status-error">0</span>
-          </div>
-          <p class="keyword-editor-hint">
-            Add or remove exclude keywords, then save them back into the existing override structure.
-          </p>
-          <div class="keyword-editor-toolbar">
-            <label class="keyword-editor-input" for="keywords-exclude-input">
-              <span class="sr-only">Exclude keyword</span>
-              <input
-                id="keywords-exclude-input"
-                type="text"
-                placeholder="Add exclude keyword"
-                autocomplete="off"
+        </div>
+      </header>
+
+      <section id="error-banner" class="error-banner hidden" aria-live="polite"></section>
+
+      <section class="page-view page-view-dashboard">
+        <section class="dashboard-summary-grid">
+          <article class="panel glass-panel solution-card">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="dashboard.solution.kicker">솔루션 개요</p>
+              <h2 id="dashboard-title" data-i18n="hero.title">크롤링 대시보드</h2>
+            </div>
+            <p
+              id="dashboard-subtitle"
+              class="subtitle"
+              data-i18n="dashboard.solution.description"
+            >
+              collect, export, observe, keyword 관리가 가능한 내부 운영 솔루션이다.
+            </p>
+            <div class="solution-pills">
+              <span
+                id="read-only-badge"
+                class="status-pill status-ready"
+                data-i18n="hero.enabled"
               >
-            </label>
-            <button
-              id="keywords-exclude-add-button"
-              class="ghost-button keyword-editor-button"
-              type="button"
-            >
-              Add
-            </button>
-            <button
-              id="keywords-exclude-save-button"
-              class="primary-button keyword-editor-button"
-              type="button"
-            >
-              Save
-            </button>
+                COLLECT + EXPORT + OBSERVE ENABLED
+              </span>
+              <span class="status-pill status-neutral" data-i18n="dashboard.solution.pillKeywords">
+                KEYWORD MANAGEMENT
+              </span>
+            </div>
+            <div class="solution-list">
+              <div class="solution-item">
+                <span class="label" data-i18n="dashboard.solution.points.collect">수집</span>
+                <strong data-i18n="dashboard.solution.points.collectValue">
+                  기업마당과 나라장터 collect 흐름을 재사용한다.
+                </strong>
+              </div>
+              <div class="solution-item">
+                <span class="label" data-i18n="dashboard.solution.points.export">산출</span>
+                <strong data-i18n="dashboard.solution.points.exportValue">
+                  SQLite 저장 결과를 Excel 산출물로 연결한다.
+                </strong>
+              </div>
+              <div class="solution-item">
+                <span class="label" data-i18n="dashboard.solution.points.observe">관찰</span>
+                <strong data-i18n="dashboard.solution.points.observeValue">
+                  관찰 로그와 raw JSONL 경로를 함께 추적한다.
+                </strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel glass-panel compact-card">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="dashboard.keywordSummary.kicker">키워드 요약</p>
+              <h2 data-i18n="dashboard.keywordSummary.title">현재 키워드 상태</h2>
+            </div>
+            <div class="compact-stat-grid">
+              <article class="compact-stat">
+                <span class="label" data-i18n="keywords.groups.core.title">핵심</span>
+                <strong id="dashboard-keywords-core-count">0</strong>
+              </article>
+              <article class="compact-stat">
+                <span class="label" data-i18n="keywords.groups.supporting.title">보조</span>
+                <strong id="dashboard-keywords-supporting-count">0</strong>
+              </article>
+              <article class="compact-stat">
+                <span class="label" data-i18n="keywords.groups.exclude.title">제외</span>
+                <strong id="dashboard-keywords-exclude-count">0</strong>
+              </article>
+            </div>
+            <div class="summary-list compact-summary-list">
+              <div class="summary-row">
+                <span class="label" data-i18n="keywords.meta.lastSavedAt">마지막 저장 시각</span>
+                <span id="dashboard-keywords-saved-at" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="keywords.meta.changedGroup">최근 변경 그룹</span>
+                <span id="dashboard-keywords-group" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="keywords.meta.saveTarget">저장 대상 파일</span>
+                <span id="dashboard-keywords-target-path" class="value">not available</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel glass-panel compact-card">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="dashboard.runtime.kicker">운영 상태</p>
+              <h2 data-i18n="dashboard.runtime.title">헬스 요약</h2>
+            </div>
+            <div class="summary-list compact-summary-list">
+              <div class="summary-row">
+                <span class="label" data-i18n="health.labels.appName">앱 이름</span>
+                <span id="dashboard-health-app-name" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="health.labels.serverTime">서버 시각</span>
+                <span id="dashboard-health-server-time" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="health.labels.settingsLoaded">설정 로드</span>
+                <span id="dashboard-health-settings-loaded" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="health.labels.stateFile">상태 파일</span>
+                <span id="dashboard-health-state-file" class="value">not available</span>
+              </div>
+              <div class="summary-row">
+                <span class="label" data-i18n="health.labels.observationHistory">관찰 히스토리</span>
+                <span id="dashboard-health-observation-history" class="value">not available</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid dashboard-board-grid">
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="dashboard.artifacts.kicker">결과물 게시판</p>
+              <h2 data-i18n="dashboard.artifacts.title">최근 산출물</h2>
+            </div>
+            <p class="hint" data-i18n="dashboard.artifacts.hint">
+              최근 export 결과, observation report, raw JSONL 경로를 카드 형태로 확인한다.
+            </p>
+            <div id="artifact-board" class="artifact-board"></div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="recent.kicker">최근 활동</p>
+              <h2 data-i18n="recent.title">Collect / Export / Observe</h2>
+            </div>
+            <div id="recent-actions" class="action-stack"></div>
+          </section>
+        </section>
+
+        <section class="dashboard-grid control-grid">
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="controls.collect.kicker">Collect 제어</p>
+              <h2 data-i18n="controls.singleRun">단일 실행</h2>
+            </div>
+            <div class="collect-shell">
+              <div class="collect-toolbar">
+                <span id="collect-status-badge" class="status-pill status-neutral" data-i18n="status.idle">
+                  대기
+                </span>
+                <button
+                  id="collect-button"
+                  class="primary-button"
+                  type="button"
+                  data-i18n="buttons.runCollect"
+                >
+                  Collect 실행
+                </button>
+              </div>
+              <p id="collect-message" class="hint" data-i18n="controls.collect.hint">
+                대시보드는 기존 manual collect 흐름을 재사용하며, 같은 서버 프로세스 안에서
+                중복 실행을 막는다.
+              </p>
+              <div id="collect-summary" class="collect-summary"></div>
+            </div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="controls.export.kicker">Export 제어</p>
+              <h2 data-i18n="controls.singleRun">단일 실행</h2>
+            </div>
+            <div class="collect-shell">
+              <div class="collect-toolbar">
+                <span id="export-status-badge" class="status-pill status-neutral" data-i18n="status.idle">
+                  대기
+                </span>
+                <button
+                  id="export-button"
+                  class="primary-button"
+                  type="button"
+                  data-i18n="buttons.runExport"
+                >
+                  Export 실행
+                </button>
+              </div>
+              <p id="export-message" class="hint" data-i18n="controls.export.hint">
+                대시보드는 기존 manual export 흐름을 재사용하며, 결과 요약을 이 패널 안에 유지한다.
+              </p>
+              <div id="export-summary" class="collect-summary"></div>
+            </div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="controls.observe.kicker">Observe 제어</p>
+              <h2 data-i18n="controls.singleRun">단일 실행</h2>
+            </div>
+            <div class="collect-shell">
+              <div class="collect-toolbar">
+                <span id="observe-status-badge" class="status-pill status-neutral" data-i18n="status.idle">
+                  대기
+                </span>
+                <button
+                  id="observe-button"
+                  class="primary-button"
+                  type="button"
+                  data-i18n="buttons.runObserve"
+                >
+                  Observe 실행
+                </button>
+              </div>
+              <p id="observe-message" class="hint" data-i18n="controls.observe.hint">
+                대시보드는 기존 manual observe 흐름을 재사용하며, 관찰 요약을 이 패널 안에 유지한다.
+              </p>
+              <div id="observe-summary" class="collect-summary"></div>
+            </div>
+          </section>
+        </section>
+      </section>
+
+      <section class="page-view page-view-settings">
+        <section class="dashboard-grid settings-top-grid">
+          <section class="panel glass-panel health-strip">
+            <div class="health-strip-head">
+              <div>
+                <p class="section-kicker" data-i18n="health.kicker">운영 상태 스냅샷</p>
+                <h2 class="health-title" data-i18n="settings.status.title">상태 정보</h2>
+              </div>
+              <span class="status-pill status-neutral" data-i18n="settings.status.readOnly">
+                READ ONLY STATUS
+              </span>
+            </div>
+            <div class="health-summary-grid">
+              <article class="health-item">
+                <span class="label" data-i18n="health.labels.appName">앱 이름</span>
+                <strong id="health-app-name" data-i18n="status.loadingLong">불러오는 중...</strong>
+              </article>
+              <article class="health-item">
+                <span class="label" data-i18n="health.labels.serverTime">서버 시각</span>
+                <strong id="health-server-time" data-i18n="status.loadingLong">불러오는 중...</strong>
+              </article>
+              <article class="health-item">
+                <span class="label" data-i18n="health.labels.settingsLoaded">설정 로드</span>
+                <strong id="health-settings-loaded" data-i18n="status.loadingLong">불러오는 중...</strong>
+              </article>
+              <article class="health-item">
+                <span class="label" data-i18n="health.labels.stateFile">상태 파일</span>
+                <strong id="health-state-file-accessible" data-i18n="status.loadingLong">불러오는 중...</strong>
+              </article>
+              <article class="health-item">
+                <span class="label" data-i18n="health.labels.observationHistory">관찰 히스토리</span>
+                <strong id="health-observation-history-exists" data-i18n="status.loadingLong">불러오는 중...</strong>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="paths.kicker">경로 정보</p>
+              <h2 data-i18n="paths.title">현재 작업 경로</h2>
+            </div>
+            <div id="paths-grid" class="paths-grid"></div>
+          </section>
+        </section>
+
+        <section id="settings-management-root" class="dashboard-grid settings-placeholder-grid">
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="settings.sources.kicker">Source 관리</p>
+              <h2 data-i18n="settings.sources.title">수집 소스 구성</h2>
+            </div>
+            <div class="placeholder-stack">
+              <article class="placeholder-item">
+                <span class="label" data-i18n="settings.sources.bizinfo.title">기업마당</span>
+                <p class="hint" data-i18n="settings.sources.bizinfo.description">
+                  현재 source 설정과 연결 상태를 여기에서 관리할 예정이다.
+                </p>
+              </article>
+              <article class="placeholder-item">
+                <span class="label" data-i18n="settings.sources.g2b.title">나라장터</span>
+                <p class="hint" data-i18n="settings.sources.g2b.description">
+                  나라장터 source 확장과 운영 제어는 다음 단계에서 이어진다.
+                </p>
+              </article>
+              <article class="placeholder-item">
+                <span class="label" data-i18n="settings.sources.future.title">추가 API Source</span>
+                <p class="hint" data-i18n="settings.sources.future.description">
+                  새 source 추가를 위한 placeholder 영역이다.
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="settings.apiKeys.kicker">API Key 관리</p>
+              <h2 data-i18n="settings.apiKeys.title">연동 키 관리</h2>
+            </div>
+            <div class="placeholder-stack">
+              <article class="placeholder-item">
+                <span class="label" data-i18n="settings.apiKeys.bizinfo.title">기업마당 인증키</span>
+                <p class="hint" data-i18n="settings.apiKeys.bizinfo.description">
+                  이번 단계에서는 read-only placeholder만 제공하고, 실제 저장 기능은 다음 단계에서 구현한다.
+                </p>
+              </article>
+              <article class="placeholder-item">
+                <span class="label" data-i18n="settings.apiKeys.g2b.title">나라장터 서비스키</span>
+                <p class="hint" data-i18n="settings.apiKeys.g2b.description">
+                  환경 변수 기반 운영 구조를 유지하고, 관리 UI는 이후 단계에서 확장한다.
+                </p>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel glass-panel keyword-panel reveal">
+          <div class="section-header keyword-header">
+            <div>
+              <p class="section-kicker" data-i18n="keywords.kicker">키워드 스냅샷</p>
+              <h2 data-i18n="keywords.title">키워드 패널</h2>
+            </div>
+            <span id="keywords-status-badge" class="status-pill status-neutral" data-i18n="status.loading">
+              불러오는 중
+            </span>
           </div>
-          <p id="keywords-exclude-message" class="keyword-editor-message" aria-live="polite">
-            Exclude keywords are saved into <code>keywords.override.toml</code>. Core and supporting keep using their own panels.
+          <p id="keywords-message" class="hint" data-i18n="keywords.message">
+            대시보드는 현재 설정과 override 구조를 기준으로 적용 중인 키워드 세트를 읽어온다.
+            이 단계에서는 core, supporting, exclude를 모두 수정할 수 있다.
           </p>
-          <div id="keywords-exclude-list" class="keyword-chip-list keyword-chip-list-editable"></div>
-        </article>
-      </div>
-    </section>
-
-    <section class="dashboard-grid control-grid">
-      <section class="panel glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Collect Control</p>
-          <h2>Single Run Execution</h2>
-        </div>
-        <div class="collect-shell">
-          <div class="collect-toolbar">
-            <span id="collect-status-badge" class="status-pill status-neutral">idle</span>
-            <button id="collect-button" class="primary-button" type="button">Run Collect</button>
+          <div class="keyword-meta-grid">
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.overridePath">Override 경로</span>
+              <strong id="keywords-override-path" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.overrideFile">Override 파일</span>
+              <strong id="keywords-override-exists" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.lastLoadedFrom">마지막 로드 경로</span>
+              <strong id="keywords-last-loaded-path" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.totalKeywords">총 키워드 수</span>
+              <strong id="keywords-total-count" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.lastSavedAt">마지막 저장 시각</span>
+              <strong id="keywords-save-meta-saved-at" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.saveTarget">저장 대상 파일</span>
+              <strong id="keywords-save-meta-target-path" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.changedGroup">최근 변경 그룹</span>
+              <strong id="keywords-save-meta-group" data-i18n="status.loadingLong">불러오는 중...</strong>
+            </article>
+            <article class="keyword-meta-item">
+              <span class="label" data-i18n="keywords.meta.lastSaveStatus">마지막 저장 상태</span>
+              <span id="keywords-save-meta-status" class="status-pill status-neutral" data-i18n="status.loading">
+                불러오는 중
+              </span>
+            </article>
           </div>
-          <p id="collect-message" class="hint">
-            The dashboard reuses the existing manual collect flow and blocks duplicate runs in the same server process.
-          </p>
-          <div id="collect-summary" class="collect-summary"></div>
-        </div>
-      </section>
+          <div class="keyword-groups-grid">
+            <article class="keyword-group-card keyword-group-card-editable">
+              <div class="keyword-group-head">
+                <h3 data-i18n="keywords.groups.core.title">핵심</h3>
+                <span id="keywords-core-count" class="status-pill status-ready">0</span>
+              </div>
+              <p class="keyword-editor-hint" data-i18n="keywords.groups.core.hint">핵심 키워드 작성란</p>
+              <div class="keyword-editor-toolbar">
+                <label class="keyword-editor-input" for="keywords-core-input">
+                  <span class="sr-only" data-i18n="keywords.groups.core.inputLabel">핵심 키워드</span>
+                  <input
+                    id="keywords-core-input"
+                    type="text"
+                    placeholder="핵심 키워드 작성란"
+                    data-i18n-placeholder="keywords.groups.core.placeholder"
+                    autocomplete="off"
+                  >
+                </label>
+                <button
+                  id="keywords-core-add-button"
+                  class="ghost-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.add"
+                >
+                  추가
+                </button>
+                <button
+                  id="keywords-core-save-button"
+                  class="primary-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.save"
+                >
+                  저장
+                </button>
+              </div>
+              <p
+                id="keywords-core-message"
+                class="keyword-editor-message"
+                aria-live="polite"
+                data-i18n-html="keywords.groups.core.message"
+              ></p>
+              <div id="keywords-core-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+            </article>
 
-      <section class="panel glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Export Control</p>
-          <h2>Single Run Execution</h2>
-        </div>
-        <div class="collect-shell">
-          <div class="collect-toolbar">
-            <span id="export-status-badge" class="status-pill status-neutral">idle</span>
-            <button id="export-button" class="primary-button" type="button">Run Export</button>
+            <article class="keyword-group-card keyword-group-card-editable">
+              <div class="keyword-group-head">
+                <h3 data-i18n="keywords.groups.supporting.title">보조</h3>
+                <span id="keywords-supporting-count" class="status-pill status-warning">0</span>
+              </div>
+              <p class="keyword-editor-hint" data-i18n="keywords.groups.supporting.hint">보조 키워드 작성란</p>
+              <div class="keyword-editor-toolbar">
+                <label class="keyword-editor-input" for="keywords-supporting-input">
+                  <span class="sr-only" data-i18n="keywords.groups.supporting.inputLabel">보조 키워드</span>
+                  <input
+                    id="keywords-supporting-input"
+                    type="text"
+                    placeholder="보조 키워드 작성란"
+                    data-i18n-placeholder="keywords.groups.supporting.placeholder"
+                    autocomplete="off"
+                  >
+                </label>
+                <button
+                  id="keywords-supporting-add-button"
+                  class="ghost-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.add"
+                >
+                  추가
+                </button>
+                <button
+                  id="keywords-supporting-save-button"
+                  class="primary-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.save"
+                >
+                  저장
+                </button>
+              </div>
+              <p
+                id="keywords-supporting-message"
+                class="keyword-editor-message"
+                aria-live="polite"
+                data-i18n-html="keywords.groups.supporting.message"
+              ></p>
+              <div id="keywords-supporting-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+            </article>
+
+            <article class="keyword-group-card keyword-group-card-editable">
+              <div class="keyword-group-head">
+                <h3 data-i18n="keywords.groups.exclude.title">제외</h3>
+                <span id="keywords-exclude-count" class="status-pill status-error">0</span>
+              </div>
+              <p class="keyword-editor-hint" data-i18n="keywords.groups.exclude.hint">제외 키워드 작성란</p>
+              <div class="keyword-editor-toolbar">
+                <label class="keyword-editor-input" for="keywords-exclude-input">
+                  <span class="sr-only" data-i18n="keywords.groups.exclude.inputLabel">제외 키워드</span>
+                  <input
+                    id="keywords-exclude-input"
+                    type="text"
+                    placeholder="제외 키워드 작성란"
+                    data-i18n-placeholder="keywords.groups.exclude.placeholder"
+                    autocomplete="off"
+                  >
+                </label>
+                <button
+                  id="keywords-exclude-add-button"
+                  class="ghost-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.add"
+                >
+                  추가
+                </button>
+                <button
+                  id="keywords-exclude-save-button"
+                  class="primary-button keyword-editor-button"
+                  type="button"
+                  data-i18n="buttons.save"
+                >
+                  저장
+                </button>
+              </div>
+              <p
+                id="keywords-exclude-message"
+                class="keyword-editor-message"
+                aria-live="polite"
+                data-i18n-html="keywords.groups.exclude.message"
+              ></p>
+              <div id="keywords-exclude-list" class="keyword-chip-list keyword-chip-list-editable"></div>
+            </article>
           </div>
-          <p id="export-message" class="hint">
-            The dashboard reuses the existing manual export flow and keeps the result summary in its own panel.
-          </p>
-          <div id="export-summary" class="collect-summary"></div>
-        </div>
+        </section>
+
+        <section class="dashboard-grid settings-footer-grid">
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="launchers.kicker">런처</p>
+              <h2 data-i18n="launchers.title">빠른 실행 경로</h2>
+            </div>
+            <div id="launcher-list" class="launcher-list"></div>
+          </section>
+
+          <section class="panel glass-panel reveal">
+            <div class="section-header">
+              <p class="section-kicker" data-i18n="settings.notes.kicker">운영 메모</p>
+              <h2 data-i18n="settings.notes.title">다음 단계 준비</h2>
+            </div>
+            <ul class="notes-list">
+              <li data-i18n="settings.notes.item1">
+                키워드 편집은 현재 override 파일 기준으로 즉시 반영된다.
+              </li>
+              <li data-i18n="settings.notes.item2">
+                API key 저장 UI는 아직 placeholder이며, 실제 저장 기능은 다음 단계에서 확장한다.
+              </li>
+              <li data-i18n="settings.notes.item3">
+                source 관리 영역은 기업마당, 나라장터, 추가 API source 확장을 위한 틀을 포함한다.
+              </li>
+            </ul>
+          </section>
+        </section>
       </section>
+    </main>
+  </div>
 
-      <section class="panel glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Observe Control</p>
-          <h2>Single Run Execution</h2>
-        </div>
-        <div class="collect-shell">
-          <div class="collect-toolbar">
-            <span id="observe-status-badge" class="status-pill status-neutral">idle</span>
-            <button id="observe-button" class="primary-button" type="button">Run Observe</button>
-          </div>
-          <p id="observe-message" class="hint">
-            The dashboard reuses the existing manual observe flow and keeps the observation summary in its own panel.
-          </p>
-          <div id="observe-summary" class="collect-summary"></div>
-        </div>
-      </section>
-
-      <aside class="panel panel-side glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Stage 10 Rules</p>
-          <h2>Current Boundaries</h2>
-        </div>
-        <ul class="notes-list">
-          <li><code>/health</code> is queried separately and only powers the read-only badge at the top of the dashboard.</li>
-          <li><code>/api/keywords</code> keeps powering the shared keyword snapshot, while <code>/api/keywords/core</code>, <code>/api/keywords/supporting</code>, and <code>/api/keywords/exclude</code> each save only their own keyword group changes.</li>
-          <li>Collect, export, and observe are controllable from the web shell in this stage.</li>
-          <li>The same <code>manual_run.py collect</code> path is reused instead of introducing a new engine.</li>
-          <li>The same <code>manual_run.py export</code> path is reused for export.</li>
-          <li>The same <code>manual_run.py observe</code> path is reused for observation runs.</li>
-          <li>Core, supporting, and exclude keywords can all be edited from their own panels in the dashboard.</li>
-          <li>If the same action is already active, the dashboard returns the current running state instead of starting another one.</li>
-        </ul>
-      </aside>
-    </section>
-
-    <section class="dashboard-grid">
-      <section class="panel panel-wide glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Active Runtime Paths</p>
-          <h2>Current Working Paths</h2>
-        </div>
-        <div id="paths-grid" class="paths-grid"></div>
-      </section>
-
-      <aside class="panel panel-side glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Operator Notes</p>
-          <h2>Shared Snapshot</h2>
-        </div>
-        <ul class="notes-list">
-          <li>CLI <code>status</code> and web <code>status</code> still share the same operator snapshot.</li>
-          <li>After collect finishes, <code>GET /api/status</code> reflects the latest collect result without replacing the rest of the dashboard.</li>
-          <li>After export finishes, the latest exported file path and recent export status are refreshed in the shared snapshot.</li>
-          <li>After observe finishes, the observation history, report, and raw JSONL paths are refreshed in the shared snapshot.</li>
-        </ul>
-      </aside>
-    </section>
-
-    <section class="dashboard-grid secondary-grid">
-      <section class="panel glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Recent Activity</p>
-          <h2>Collect / Export / Observe</h2>
-        </div>
-        <div id="recent-actions" class="action-stack"></div>
-      </section>
-
-      <section class="panel glass-panel reveal">
-        <div class="section-header">
-          <p class="section-kicker">Launchers</p>
-          <h2>Quick Entry Points</h2>
-        </div>
-        <div id="launcher-list" class="launcher-list"></div>
-      </section>
-    </section>
-  </main>
-
-  <script src="/static/dashboard.js" defer></script>
+  <script src="/static/dashboard.js?v=20260423-2" defer></script>
 </body>
 </html>

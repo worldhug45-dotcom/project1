@@ -36,9 +36,7 @@ class DockerComposeArtifactsTests(TestCase):
     def test_env_example_and_docker_settings_exist(self) -> None:
         env_content = Path(".env.example").read_text(encoding="utf-8")
         settings_content = Path("config/settings.docker.toml").read_text(encoding="utf-8")
-        override_content = Path("config/keywords.docker.override.toml").read_text(
-            encoding="utf-8"
-        )
+        override_content = Path("config/keywords.docker.override.toml").read_text(encoding="utf-8")
 
         self.assertIn("PROJECT1_BIZINFO_CERT_KEY", env_content)
         self.assertIn("PROJECT1_G2B_API_KEY", env_content)

@@ -94,9 +94,7 @@ def evaluate_keywords(fields: dict[str, str | None], keywords: KeywordSet) -> Ke
         )
 
     domains = tuple(
-        domain
-        for domain in DOMAIN_PRIORITY
-        if any(item.domain == domain for item in evidence)
+        domain for domain in DOMAIN_PRIORITY if any(item.domain == domain for item in evidence)
     )
     if not domains:
         return KeywordMatchResult(
@@ -119,7 +117,9 @@ def evaluate_keywords(fields: dict[str, str | None], keywords: KeywordSet) -> Ke
     )
 
 
-def _find_excluded_keywords(fields: dict[str, str | None], exclude_keywords: tuple[str, ...]) -> tuple[str, ...]:
+def _find_excluded_keywords(
+    fields: dict[str, str | None], exclude_keywords: tuple[str, ...]
+) -> tuple[str, ...]:
     found: list[str] = []
     for field_name in FIELD_PRIORITY:
         text = _normalize_text(fields.get(field_name) or "")
@@ -129,7 +129,9 @@ def _find_excluded_keywords(fields: dict[str, str | None], exclude_keywords: tup
     return tuple(dict.fromkeys(found))
 
 
-def _collect_match_evidence(fields: dict[str, str | None], keywords: KeywordSet) -> tuple[_MatchEvidence, ...]:
+def _collect_match_evidence(
+    fields: dict[str, str | None], keywords: KeywordSet
+) -> tuple[_MatchEvidence, ...]:
     evidence: list[_MatchEvidence] = []
     keyword_groups = (
         (KeywordGroup.CORE, keywords.core),
