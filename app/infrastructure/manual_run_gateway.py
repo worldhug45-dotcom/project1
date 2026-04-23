@@ -13,6 +13,7 @@ from app.application.operator_dashboard import (
     ExportExecutionResult,
     ObserveExecutionResult,
 )
+from app.infrastructure.local_env import build_runtime_environ
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -35,7 +36,7 @@ class ManualRunCollectGateway:
             "--state-path",
             str(self.state_path),
         ]
-        child_environ = os.environ.copy()
+        child_environ = build_runtime_environ(os.environ.copy(), config_path=self.config_path)
         child_environ["PYTHONIOENCODING"] = "utf-8"
         child_environ["PYTHONUTF8"] = "1"
         completed = subprocess.run(
@@ -72,7 +73,7 @@ class ManualRunExportGateway:
             "--state-path",
             str(self.state_path),
         ]
-        child_environ = os.environ.copy()
+        child_environ = build_runtime_environ(os.environ.copy(), config_path=self.config_path)
         child_environ["PYTHONIOENCODING"] = "utf-8"
         child_environ["PYTHONUTF8"] = "1"
         completed = subprocess.run(
@@ -118,7 +119,7 @@ class ManualRunObserveGateway:
             "--state-path",
             str(self.state_path),
         ]
-        child_environ = os.environ.copy()
+        child_environ = build_runtime_environ(os.environ.copy(), config_path=self.config_path)
         child_environ["PYTHONIOENCODING"] = "utf-8"
         child_environ["PYTHONUTF8"] = "1"
         completed = subprocess.run(

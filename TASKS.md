@@ -193,9 +193,12 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] 엑셀 시트/컬럼 생성 테스트 작성
 - [x] 실제 `.xlsx` 파일 생성 테스트 작성
 - [x] CLI collect -> SQLite 저장 -> CLI export -> 실제 `.xlsx` 생성 테스트 작성
-- [ ] format 검사 연결
-- [ ] lint 검사 연결
-- [ ] type check 연결
+- [x] format 검사 연결
+- [x] lint 검사 연결
+- [x] type check 연결
+- [x] `scripts/run_quality.ps1`로 품질 검사 일괄 실행 경로 제공
+- [x] GitHub Actions 품질 게이트 workflow 추가
+- [x] `push` / `pull_request` 기준 format / lint / type check / unittest / compileall 자동 실행
 
 ## 10단계: MVP 완료 검증
 
@@ -379,5 +382,50 @@ AI에게 작업을 요청할 때는 아래 형식을 사용한다.
 - [x] `keywords.override.toml` 기존 구조를 유지한 저장 로직 구현
 - [x] 중복 / 빈 문자열 / 공백-only 입력 검증
 - [x] 저장 후 `/api/keywords` 최신 supporting 상태 반영
-- [x] core / exclude 키워드는 계속 읽기 전용 유지
+- [x] 웹 8단계 기준 core / exclude 키워드는 읽기 전용 유지
 - [x] supporting 키워드 저장 웹 테스트 작성
+
+## 26단계: 웹 운영자 대시보드 9단계
+
+- [x] exclude 키워드 편집 UI 추가
+- [x] `POST /api/keywords/exclude` endpoint 구현
+- [x] exclude 키워드 신규 추가 / 삭제 / 저장 기능 구현
+- [x] `keywords.override.toml` 기존 구조를 유지한 저장 로직 확장
+- [x] 중복 / 빈 문자열 / 공백-only 입력 검증
+- [x] 저장 후 `/api/keywords` 최신 exclude 상태 반영
+- [x] exclude 키워드 저장 웹 테스트 작성
+
+## 27단계: 웹 운영자 대시보드 10단계
+
+- [x] core 키워드 편집 UI 추가
+- [x] `POST /api/keywords/core` endpoint 구현
+- [x] core 키워드 신규 추가 / 삭제 / 저장 기능 구현
+- [x] `keywords.override.toml` 기존 구조를 유지한 저장 로직 확장
+- [x] 중복 / 빈 문자열 / 공백-only 입력 검증
+- [x] 저장 후 `/api/keywords` 최신 core 상태 반영
+- [x] supporting / exclude 편집 구조와 충돌 없이 공존
+- [x] core 키워드 저장 웹 테스트 작성
+
+## 28단계: 웹 운영자 대시보드 11단계
+
+- [x] 키워드 저장 메타 UI 추가
+- [x] `/api/keywords` 응답에 `save_meta` 구조 추가
+- [x] 마지막 저장 시각 표시
+- [x] 저장 대상 override 파일 경로 표시
+- [x] 최근 변경 그룹 표시
+- [x] 마지막 저장 결과 상태 표시
+- [x] `keywords.override.meta.json` sidecar 파일 저장 구조 추가
+- [x] 페이지 새로고침 후에도 저장 메타 재조회 가능
+- [x] 키워드 저장 메타 웹 테스트 작성
+
+## 29단계: 웹 운영자 대시보드 설정 화면 3단계
+
+- [x] 설정 화면에서 기업마당 source enabled 상태를 저장할 수 있다.
+- [x] 설정 화면에서 나라장터 source enabled 상태를 저장할 수 있다.
+- [x] 설정 화면에서 `source_mode`를 `api` / `fixture`로 선택하고 저장할 수 있다.
+- [x] `POST /api/settings/sources`가 `source_mode`와 source enabled 상태를 함께 저장한다.
+- [x] 저장 대상은 기존 `settings.override.toml` 구조를 유지한다.
+- [x] 저장 후 `/api/settings`에서 최신 source 상태와 `current_source_mode`를 다시 조회할 수 있다.
+- [x] 현재 collect 제약에 맞춰 기업마당과 나라장터를 동시에 enabled로 저장하지 못하게 검증한다.
+- [x] 모든 기본 source를 disabled로 저장하지 못하게 검증한다.
+- [x] source 설정 저장 웹 테스트를 보강했다.

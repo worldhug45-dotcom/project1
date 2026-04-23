@@ -192,7 +192,33 @@ python -m unittest discover -v
 python -m compileall app tests scripts
 ```
 
-2026-04-21 기준 전체 테스트는 `67`개 통과 상태다.
+## 품질 검사
+
+개발용 도구 설치:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
+한 번에 실행:
+
+```powershell
+.\scripts\run_quality.ps1
+```
+
+개별 실행:
+
+```powershell
+python -m ruff format --check app tests scripts
+python -m ruff check app tests scripts
+python -m mypy
+```
+
+`ruff`와 `mypy`는 파일 경로와 라인 번호를 함께 출력하므로, 어떤 파일에서 어떤 유형의 문제가 발생했는지 바로 확인할 수 있다.
+
+CI에서는 같은 품질 게이트를 `.github/workflows/quality-gates.yml`로 `push`와 `pull_request`마다 자동 실행한다.
+
+2026-04-22 기준 전체 테스트는 `119`개 통과 상태다.
 
 ## 다음 작업 후보
 

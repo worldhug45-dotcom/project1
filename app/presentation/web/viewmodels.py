@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 from app.application import (
     CollectControlState,
@@ -17,6 +18,7 @@ PATH_LABELS = (
     ("keyword_override_path", "Keywords override"),
     ("sqlite_db_path", "SQLite DB"),
     ("export_output_dir", "Export output"),
+    ("current_source_mode", "Current source mode"),
     ("latest_exported_file_path", "Latest exported file"),
     ("observation_history_path", "Observation history"),
     ("observation_report_path", "Observation report"),
@@ -34,6 +36,7 @@ SUMMARY_LABELS = {
     "saved_count": "Saved",
     "skipped_count": "Skipped",
     "error_count": "Errors",
+    "error_message": "Error",
     "exported_file_count": "Exported files",
     "latest_raw_jsonl_path": "Latest raw JSONL",
 }
@@ -54,10 +57,10 @@ def build_dashboard_view_model(
 ) -> dict[str, Any]:
     return {
         "status": "ready",
-        "dashboard_title": "Project1 Operator Dashboard",
+        "dashboard_title": "Crawling Dashboard",
         "dashboard_subtitle": (
-            "Stage 10 keeps the CLI engine as the source of truth, allows core, supporting, "
-            "and exclude keyword editing, and keeps health plus collect, export, and observe on the shared status snapshot."
+            "The web operator dashboard reuses the CLI engine, exposes status/health/keywords, "
+            "and keeps collect, export, and observe available from one operator surface."
         ),
         "read_only": False,
         "updated_at": snapshot.updated_at or "not available",
@@ -69,6 +72,7 @@ def build_dashboard_view_model(
             }
             for key, label in PATH_LABELS
         ],
+        "artifacts": _build_artifact_items(snapshot.artifacts),
         "recent_actions": (
             _build_action_panel("collect", snapshot.recent_collect),
             _build_action_panel("export", snapshot.recent_export),
@@ -87,14 +91,15 @@ def build_dashboard_view_model(
 def build_dashboard_error_view_model(error_message: str) -> dict[str, Any]:
     return {
         "status": "error",
-        "dashboard_title": "Project1 Operator Dashboard",
+        "dashboard_title": "Crawling Dashboard",
         "dashboard_subtitle": (
-            "The web shell is running, but the current status snapshot could not be loaded."
+            "The web shell is running, but the current operator snapshot could not be loaded."
         ),
         "read_only": False,
         "updated_at": "not available",
         "error_message": error_message,
         "paths": [],
+        "artifacts": [],
         "recent_actions": (
             _empty_action_panel("collect"),
             _empty_action_panel("export"),
@@ -158,6 +163,7 @@ def _build_action_panel(action: str, payload: dict[str, Any] | None) -> dict[str
         "saved_count",
         "skipped_count",
         "error_count",
+        "error_message",
         "exported_file_count",
         "latest_raw_jsonl_path",
     ):
@@ -245,3 +251,37 @@ def _build_observe_control(state: ObserveControlState) -> dict[str, Any]:
 
 def _humanize_launcher(value: str) -> str:
     return value.replace("_", " ").title()
+
+
+def _build_artifact_items(items: tuple[Any, ...]) -> list[dict[str, Any]]:
+    payload: list[dict[str, Any]] = []
+    for item in items:
+        artifact = {
+            "group": item.group,
+            "kind": item.kind,
+            "name": item.name,
+            "path": item.path,
+            "created_at": item.created_at,
+            "status": item.status,
+            "open_url": _artifact_open_url(item),
+            "download_url": _artifact_download_url(item),
+        }
+        payload.append(artifact)
+    return payload
+
+
+def _artifact_open_url(item: Any) -> str | None:
+    if item.kind == "export_result" and item.relative_path:
+        return f"/artifacts/export/{quote(item.relative_path)}"
+    if item.kind == "observation_raw" and item.relative_path:
+        return f"/artifacts/raw/{quote(item.relative_path)}"
+    if item.kind == "observation_report":
+        return "/artifacts/report"
+    return None
+
+
+def _artifact_download_url(item: Any) -> str | None:
+    open_url = _artifact_open_url(item)
+    if open_url is None:
+        return None
+    return f"{open_url}?download=1"

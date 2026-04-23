@@ -304,7 +304,41 @@
 
 ## 2026-04-21 - 웹 운영자 대시보드 8단계는 supporting 키워드만 override 파일에 저장 가능하게 한다
 
-- Status: Accepted
+- Status: Superseded
 - Context: 내부 운영자는 웹에서 가장 자주 조정하는 키워드 집합을 최소 범위로 편집할 수 있어야 하지만, 핵심 키워드와 제외 키워드까지 한 번에 열면 범위와 위험이 커진다.
 - Decision: 웹 8단계에서는 supporting 키워드만 편집 가능하게 두고, `POST /api/keywords/supporting`이 기존 `keywords.override.toml` 구조를 유지한 채 `add_supporting` / `remove_supporting`만 다시 계산해 저장한다. `core`, `exclude`는 계속 읽기 전용으로 두고, 중복/빈 문자열/공백-only 입력은 저장하지 않는다.
-- Consequences: 운영자는 코드 수정 없이 supporting 키워드를 웹에서 추가/삭제하고 즉시 저장할 수 있다. 반면 핵심/제외 키워드 변경은 여전히 통제된 후속 단계로 남겨 두어 운영 리스크를 줄인다.
+- Consequences: 운영자는 코드 수정 없이 supporting 키워드를 웹에서 추가/삭제하고 즉시 저장할 수 있었다. 이후 동일한 저장 패턴을 검증한 뒤 exclude, core 편집으로 확장했다.
+
+## 2026-04-22 - 웹 키워드 편집 범위를 core, supporting, exclude 전체로 확장한다
+
+- Status: Accepted
+- Context: supporting-only 저장 패턴이 안정화되었고, 내부 운영자가 실제 관찰 결과에 맞춰 core와 exclude도 코드 수정 없이 조정할 필요가 생겼다.
+- Decision: 웹 대시보드는 `POST /api/keywords/core`, `POST /api/keywords/supporting`, `POST /api/keywords/exclude` 세 endpoint를 통해 각 키워드 그룹만 독립적으로 저장한다. 각 endpoint는 기존 `keywords.override.toml` 구조를 유지한 채 자기 그룹만 갱신하고, 중복/빈 문자열/공백-only 입력은 저장하지 않는다.
+- Consequences: 운영자는 세 키워드 그룹을 모두 웹에서 관리할 수 있고, 그룹별 저장 범위가 분리되어 변경 영향도 추적이 쉬워진다. bulk edit, import/export, rollback은 계속 범위 밖으로 둔다.
+
+## 2026-04-22 - 키워드 저장 메타는 sidecar 파일로 유지한다
+
+- Status: Accepted
+- Context: 운영자가 마지막 저장 시각, 저장 대상 파일, 최근 변경 그룹, 성공/실패 상태를 새로고침 후에도 바로 확인할 수 있어야 한다.
+- Decision: 키워드 본문은 기존 `keywords.override.toml`에 유지하고, 저장 메타는 인접한 `keywords.override.meta.json` sidecar 파일에 기록한다. `/api/keywords`는 `save_meta`를 함께 반환해 `saved_at`, `target_path`, `changed_group`, `status`, 필요 시 `error_message`를 노출한다.
+- Consequences: override TOML schema를 바꾸지 않고도 운영 UX용 메타데이터를 안정적으로 제공할 수 있다. 저장 실패도 메타로 남겨 새로고침 이후 같은 진단 정보를 확인할 수 있다.
+
+## 2026-04-22 - 최소 품질 게이트는 ruff와 mypy로 연결한다
+
+- Status: Accepted
+- Context: 현재 코드베이스는 기능 범위가 넓어졌지만 format, lint, type check 실행 기준이 문서와 관행에만 머물러 있었다. 기존 CLI, 웹, 테스트 흐름을 건드리지 않으면서도 로컬에서 반복 가능한 최소 품질 게이트가 필요했다.
+- Decision: format과 lint는 `ruff`로, type check는 `mypy`로 연결한다. `ruff`는 `app`, `tests`, `scripts`를 대상으로 실행하고, `mypy`는 현재 단계에서 노이즈를 줄이기 위해 `app` 계층만 검사한다. 일괄 실행 진입점은 `scripts/run_quality.ps1`로 제공한다.
+- Consequences: 개발자는 `.\scripts\run_quality.ps1` 한 번으로 format / lint / type check를 순서대로 확인할 수 있다. 테스트 코드와 운영 스크립트는 formatter와 lint 대상에는 포함되지만, type check 범위는 우선 `app`에 한정해 최소 기준을 안정적으로 유지한다.
+
+## 2026-04-22 - GitHub Actions 1단계는 로컬 품질 게이트를 그대로 재사용한다
+
+- Status: Accepted
+- Context: 로컬에서 `ruff format --check`, `ruff check`, `mypy`, `unittest`, `compileall`이 통과 중이므로, 같은 기준을 CI에 옮겨야 push와 pull request 단계에서 회귀를 빠르게 잡을 수 있다.
+- Decision: GitHub Actions는 단일 workflow로 시작하고, `push`와 `pull_request`마다 Python 3.13 환경에서 `requirements-dev.txt`를 설치한 뒤 `ruff format --check`, `ruff check`, `mypy`, `python -m unittest discover -v`, `python -m compileall app tests scripts`를 순서대로 실행한다. 각 검사는 별도 step으로 분리해 실패 지점을 로그에서 바로 구분할 수 있게 한다.
+- Consequences: 로컬과 CI의 품질 게이트 기준이 크게 어긋나지 않게 유지된다. 향후 mypy 범위 확장이나 릴리즈 자동화도 같은 workflow 기반 위에서 단계적으로 확장할 수 있다.
+## 2026-04-23 - 설정 화면 source 저장은 단일 enabled source 제약을 따른다
+
+- Status: Accepted
+- Context: 현재 collect 엔진은 기업마당과 나라장터를 동시에 실행하는 multi-source orchestration을 아직 지원하지 않는다. 설정 화면에서 두 source를 동시에 enabled로 저장할 수 있으면 UI 저장 상태와 collect 실행 규칙이 충돌할 수 있다.
+- Decision: 설정 화면 3단계에서는 `POST /api/settings/sources`가 기업마당/나라장터 enabled 상태와 `runtime.source_mode`만 저장한다. 저장 대상은 기존 `settings.override.toml`이며, `source_mode`는 `api` 또는 `fixture`만 허용한다. 기본 source는 정확히 하나만 enabled로 저장할 수 있게 하고, 모두 disabled 또는 둘 다 enabled인 경우 사용자 친화적인 설정 오류로 거부한다.
+- Consequences: 운영자는 웹에서 source 활성 상태와 source mode를 안전하게 변경할 수 있다. collect 핵심 엔진은 수정하지 않고 UI 저장 규칙을 현재 실행 제약에 맞췄으며, 향후 multi-source orchestration을 구현할 때 이 제약을 별도 결정으로 완화할 수 있다.

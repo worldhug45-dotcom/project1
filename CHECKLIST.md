@@ -191,9 +191,11 @@
 - [x] 엑셀 시트/컬럼 생성 테스트가 있다.
 - [x] 실제 `.xlsx` 파일 생성 테스트가 있다.
 - [x] CLI collect -> SQLite 저장 -> CLI export -> 실제 `.xlsx` 생성 테스트가 있다.
-- [ ] format 검사를 실행했다.
-- [ ] lint 검사를 실행했다.
-- [ ] type check를 실행했다.
+- [x] format 검사를 실행했다.
+- [x] lint 검사를 실행했다.
+- [x] type check를 실행했다.
+- [x] `scripts/run_quality.ps1`로 format / lint / type check를 한 번에 실행할 수 있다.
+- [x] GitHub Actions에서 format / lint / type check / unittest / compileall이 자동 실행된다.
 
 ## 실제 API 수동 검증 체크리스트
 
@@ -338,7 +340,7 @@
 
 ## 웹 운영자 대시보드 8단계 체크리스트
 
-- [x] supporting 키워드만 편집 UI가 제공된다.
+- [x] supporting 키워드 편집 UI가 제공된다.
 - [x] `POST /api/keywords/supporting` endpoint가 동작한다.
 - [x] supporting 키워드를 웹에서 신규 추가할 수 있다.
 - [x] supporting 키워드를 웹에서 삭제할 수 있다.
@@ -346,5 +348,55 @@
 - [x] 중복 / 빈 문자열 / 공백-only 입력은 저장되지 않는다.
 - [x] 저장 후 `/api/keywords`에서 최신 supporting 상태를 확인할 수 있다.
 - [x] 저장 성공/실패 메시지가 supporting 영역 안에서만 표시된다.
-- [x] `core`, `exclude`는 계속 읽기 전용이다.
+- [x] 웹 8단계 기준 `core`, `exclude`는 읽기 전용으로 유지되었다.
 - [x] supporting 키워드 저장 웹 테스트가 있다.
+
+## 웹 운영자 대시보드 9단계 체크리스트
+
+- [x] exclude 키워드 편집 UI가 제공된다.
+- [x] `POST /api/keywords/exclude` endpoint가 동작한다.
+- [x] exclude 키워드를 웹에서 신규 추가할 수 있다.
+- [x] exclude 키워드를 웹에서 삭제할 수 있다.
+- [x] 저장 결과가 기존 `keywords.override.toml` 구조에 반영된다.
+- [x] 중복 / 빈 문자열 / 공백-only 입력은 저장되지 않는다.
+- [x] 저장 후 `/api/keywords`에서 최신 exclude 상태를 확인할 수 있다.
+- [x] 저장 성공/실패 메시지가 exclude 영역 안에서만 표시된다.
+- [x] exclude 키워드 저장 웹 테스트가 있다.
+
+## 웹 운영자 대시보드 10단계 체크리스트
+
+- [x] core 키워드 편집 UI가 제공된다.
+- [x] `POST /api/keywords/core` endpoint가 동작한다.
+- [x] core 키워드를 웹에서 신규 추가할 수 있다.
+- [x] core 키워드를 웹에서 삭제할 수 있다.
+- [x] 저장 결과가 기존 `keywords.override.toml` 구조에 반영된다.
+- [x] 중복 / 빈 문자열 / 공백-only 입력은 저장되지 않는다.
+- [x] 저장 후 `/api/keywords`에서 최신 core 상태를 확인할 수 있다.
+- [x] 저장 성공/실패 메시지가 core 영역 안에서만 표시된다.
+- [x] supporting / exclude 편집 기능과 충돌하지 않는다.
+- [x] core 키워드 저장 웹 테스트가 있다.
+
+## 웹 운영자 대시보드 11단계 체크리스트
+
+- [x] 키워드 패널에 마지막 저장 시각이 표시된다.
+- [x] 키워드 패널에 저장 대상 override 파일 경로가 표시된다.
+- [x] 키워드 패널에 최근 변경 그룹이 표시된다.
+- [x] 키워드 패널에 마지막 저장 결과 상태가 표시된다.
+- [x] `/api/keywords` 응답에 `save_meta`가 포함된다.
+- [x] 저장 메타는 `keywords.override.meta.json` sidecar 파일로 유지된다.
+- [x] 페이지 새로고침 후에도 저장 메타를 다시 조회할 수 있다.
+- [x] 저장 실패 시에도 최근 저장 메타 상태를 확인할 수 있다.
+- [x] 키워드 저장 메타 관련 웹 테스트가 있다.
+
+## 웹 운영자 대시보드 설정 화면 3단계 체크리스트
+
+- [x] 설정 화면에서 기업마당 enabled 상태를 수정할 수 있다.
+- [x] 설정 화면에서 나라장터 enabled 상태를 수정할 수 있다.
+- [x] 설정 화면에서 `source_mode`를 `api` / `fixture`로 선택할 수 있다.
+- [x] `POST /api/settings/sources`가 source enabled 상태와 `source_mode`를 저장한다.
+- [x] 저장 결과가 기존 `settings.override.toml` 구조에 반영된다.
+- [x] 저장 후 `/api/settings`에서 최신 source 상태와 `current_source_mode`를 확인할 수 있다.
+- [x] 기업마당과 나라장터를 동시에 enabled로 저장하면 사용자 친화적인 오류가 반환된다.
+- [x] 모든 기본 source를 disabled로 저장하면 사용자 친화적인 오류가 반환된다.
+- [x] 기존 API key 저장 기능과 충돌하지 않는다.
+- [x] source 설정 저장 관련 웹 테스트가 있다.

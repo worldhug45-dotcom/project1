@@ -171,7 +171,9 @@ class BizinfoSourceTests(TestCase):
             endpoint="https://www.bizinfo.go.kr/uss/rss/bizinfoApi.do",
             cert_key="secret-key",
             retry_count=0,
-            opener=lambda request, timeout: _BytesResponse({"reqErr": "존재하지 않는 인증키 입니다."}),
+            opener=lambda request, timeout: _BytesResponse(
+                {"reqErr": "존재하지 않는 인증키 입니다."}
+            ),
             sleeper=lambda _seconds: None,
         )
 

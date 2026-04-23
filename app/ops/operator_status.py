@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.infrastructure.local_env import build_runtime_environ
 from app.infrastructure.settings import load_settings, resolve_keyword_override_path
 from app.ops.observation import CollectObservationRecord, load_observation_history
 
@@ -22,6 +22,19 @@ DEFAULT_LAUNCHERS = {
 
 
 @dataclass(frozen=True, slots=True)
+class OperatorArtifactSnapshot:
+    """Recent operator artifact entry derived from the current filesystem."""
+
+    group: str
+    kind: str
+    name: str
+    path: str
+    created_at: str
+    status: str
+    relative_path: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class OperatorStatusSnapshot:
     """Read-only snapshot that powers operator-facing status surfaces."""
 
@@ -31,6 +44,7 @@ class OperatorStatusSnapshot:
     recent_observe: dict[str, Any] | None
     launchers: dict[str, str]
     updated_at: str | None = None
+    artifacts: tuple[OperatorArtifactSnapshot, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -45,8 +59,12 @@ def load_operator_status_snapshot(
     state_path: Path,
     environ: dict[str, str] | None = None,
 ) -> OperatorStatusSnapshot:
-    runtime_environ = dict(os.environ if environ is None else environ)
-    settings = load_settings(config_path, cli_overrides={"action": "export"})
+    runtime_environ = build_runtime_environ(environ, config_path=config_path)
+    settings = load_settings(
+        config_path,
+        cli_overrides={"action": "export"},
+        environ=runtime_environ,
+    )
     keyword_override_path = resolve_keyword_override_path(config_path, runtime_environ)
     latest_xlsx = latest_file(settings.export.output_dir, "*.xlsx")
     latest_raw_jsonl = latest_file(raw_output_dir, "*.jsonl")
@@ -63,12 +81,18 @@ def load_operator_status_snapshot(
             "keyword_override_path": display_path(keyword_override_path),
             "sqlite_db_path": str(settings.storage.database_path),
             "export_output_dir": str(settings.export.output_dir),
+            "current_source_mode": settings.runtime.source_mode,
             "latest_exported_file_path": display_path(latest_xlsx),
             "observation_history_path": str(history_path),
             "observation_report_path": str(log_path),
             "observation_raw_jsonl_dir": str(raw_output_dir),
             "state_path": str(state_path),
         },
+        artifacts=build_recent_artifacts(
+            export_output_dir=settings.export.output_dir,
+            raw_output_dir=raw_output_dir,
+            observation_report_path=log_path,
+        ),
         recent_collect=recent_collect_state(manual_state, latest_observation),
         recent_export=recent_export_state(manual_state, latest_xlsx),
         recent_observe=recent_observe_state(
@@ -110,12 +134,70 @@ def latest_observation_record(path: Path) -> CollectObservationRecord | None:
 
 
 def latest_file(directory: Path, pattern: str) -> Path | None:
+    recent = recent_files(directory, pattern, limit=1)
+    if not recent:
+        return None
+    return recent[0]
+
+
+def recent_files(directory: Path, pattern: str, *, limit: int = 5) -> tuple[Path, ...]:
     if not directory.exists():
-        return None
-    files = [path for path in directory.glob(pattern) if path.is_file()]
-    if not files:
-        return None
-    return max(files, key=lambda item: item.stat().st_mtime)
+        return ()
+    files = sorted(
+        (path for path in directory.glob(pattern) if path.is_file()),
+        key=lambda item: item.stat().st_mtime,
+        reverse=True,
+    )
+    return tuple(files[:limit])
+
+
+def build_recent_artifacts(
+    *,
+    export_output_dir: Path,
+    raw_output_dir: Path,
+    observation_report_path: Path,
+) -> tuple[OperatorArtifactSnapshot, ...]:
+    artifacts: list[OperatorArtifactSnapshot] = []
+
+    for path in recent_files(export_output_dir, "*.xlsx", limit=5):
+        artifacts.append(
+            OperatorArtifactSnapshot(
+                group="export",
+                kind="export_result",
+                name=path.name,
+                path=str(path),
+                created_at=mtime_isoformat(path),
+                status="available",
+                relative_path=_relative_artifact_path(path, export_output_dir),
+            )
+        )
+
+    if observation_report_path.exists() and observation_report_path.is_file():
+        artifacts.append(
+            OperatorArtifactSnapshot(
+                group="observation",
+                kind="observation_report",
+                name=observation_report_path.name,
+                path=str(observation_report_path),
+                created_at=mtime_isoformat(observation_report_path),
+                status="available",
+            )
+        )
+
+    for path in recent_files(raw_output_dir, "*.jsonl", limit=5):
+        artifacts.append(
+            OperatorArtifactSnapshot(
+                group="observation",
+                kind="observation_raw",
+                name=path.name,
+                path=str(path),
+                created_at=mtime_isoformat(path),
+                status="available",
+                relative_path=_relative_artifact_path(path, raw_output_dir),
+            )
+        )
+
+    return tuple(artifacts)
 
 
 def recent_collect_state(
@@ -171,11 +253,7 @@ def recent_observe_state(
     if latest_observation is None and latest_raw_jsonl is None:
         return None
     payload: dict[str, Any] = {
-        "status": (
-            latest_observation.status
-            if latest_observation is not None
-            else "available"
-        ),
+        "status": (latest_observation.status if latest_observation is not None else "available"),
         "recorded_at": (
             latest_observation.observed_on
             if latest_observation is not None
@@ -212,3 +290,10 @@ def mtime_isoformat(path: Path | None) -> str:
 
 def now_isoformat() -> str:
     return datetime.now(UTC).isoformat()
+
+
+def _relative_artifact_path(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.name

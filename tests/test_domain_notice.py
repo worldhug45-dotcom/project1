@@ -104,4 +104,3 @@ class NoticeModelTests(TestCase):
 
         self.assertEqual(key.key_type, "source_notice_id")
         self.assertEqual(key.key_value, "BIZ-1")
-

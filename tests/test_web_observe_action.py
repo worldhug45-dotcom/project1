@@ -50,8 +50,7 @@ class WebObserveActionTests(TestCase):
         status_payload = payload["status_payload"]
         self.assertEqual(status_payload["observe_control"]["status"], "finished")
         items = {
-            item["label"]: item["value"]
-            for item in status_payload["observe_control"]["items"]
+            item["label"]: item["value"] for item in status_payload["observe_control"]["items"]
         }
         self.assertEqual(items["Run ID"], "observe-run-1")
         self.assertEqual(items["Observed on"], "2026-04-21")
@@ -125,8 +124,9 @@ class WebObserveActionTests(TestCase):
             status_while_running = _get_json(f"{base_url}/api/status")
             release_event.set()
             _wait_until(
-                lambda: _get_json(f"{base_url}/api/status")["observe_control"]["status"]
-                == "finished"
+                lambda: (
+                    _get_json(f"{base_url}/api/status")["observe_control"]["status"] == "finished"
+                )
             )
         finally:
             server.shutdown()
@@ -168,8 +168,7 @@ class WebObserveActionTests(TestCase):
         self.assertEqual(status_payload["observe_control"]["status"], "failed")
         self.assertEqual(status_payload["observe_control"]["error_message"], "observe failed")
         items = {
-            item["label"]: item["value"]
-            for item in status_payload["observe_control"]["items"]
+            item["label"]: item["value"] for item in status_payload["observe_control"]["items"]
         }
         self.assertEqual(items["Errors"], "1")
 
@@ -245,8 +244,9 @@ def _run_server_case(
     try:
         action_payload = _post_json(f"{base_url}/actions/observe")
         _wait_until(
-            lambda: _get_json(f"{base_url}/api/status")["observe_control"]["status"]
-            == expected_status
+            lambda: (
+                _get_json(f"{base_url}/api/status")["observe_control"]["status"] == expected_status
+            )
         )
         status_payload = _get_json(f"{base_url}/api/status")
     finally:

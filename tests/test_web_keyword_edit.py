@@ -57,6 +57,10 @@ remove_exclude = []
         self.assertEqual(snapshot["keywords"]["exclude"], ["job", "sales"])
         self.assertEqual(snapshot["override_path"], str(override_path))
         self.assertTrue(snapshot["override_exists"])
+        self.assertEqual(snapshot["save_meta"]["status"], "success")
+        self.assertEqual(snapshot["save_meta"]["changed_group"], "core")
+        self.assertEqual(snapshot["save_meta"]["target_path"], str(override_path))
+        self.assertNotEqual(snapshot["save_meta"]["saved_at"], "not available")
         self.assertIn('add_core = ["platform"]', override_text)
         self.assertIn("remove_core = []", override_text)
         self.assertIn('add_supporting = ["legacy"]', override_text)
@@ -109,6 +113,37 @@ remove_exclude = []
         self.assertTrue(get_payload["override_exists"])
         self.assertEqual(get_payload["last_loaded_path"], str(override_path))
         self.assertEqual(get_payload["keywords"]["core"], ["AI", "platform"])
+        self.assertEqual(get_payload["save_meta"]["status"], "success")
+        self.assertEqual(get_payload["save_meta"]["changed_group"], "core")
+        self.assertEqual(get_payload["save_meta"]["target_path"], str(override_path))
+
+    def test_failed_core_keyword_save_persists_failure_meta_for_refresh(self) -> None:
+        with temporary_directory() as directory:
+            root = Path(directory)
+            config_path = _write_fixture_config(root)
+            override_path = root / "keywords.override.toml"
+
+            settings = DashboardServerSettings(
+                host="127.0.0.1",
+                port=0,
+                config_path=config_path,
+            )
+            save_status_code, save_payload = _post_core_keywords(
+                settings,
+                {"core_keywords": ["   ", ""]},
+            )
+            get_status_code, get_payload = _fetch_keywords(settings)
+
+        self.assertEqual(save_status_code, 400)
+        self.assertFalse(save_payload["saved"])
+        self.assertEqual(get_status_code, 200)
+        self.assertEqual(get_payload["save_meta"]["status"], "failed")
+        self.assertEqual(get_payload["save_meta"]["changed_group"], "core")
+        self.assertEqual(get_payload["save_meta"]["target_path"], str(override_path))
+        self.assertEqual(
+            get_payload["save_meta"]["error_message"],
+            "Core keywords must not be empty.",
+        )
 
     def test_supporting_keyword_save_updates_override_and_snapshot(self) -> None:
         with temporary_directory() as directory:
@@ -157,6 +192,9 @@ remove_exclude = []
         self.assertEqual(snapshot["keywords"]["exclude"], ["job", "sales"])
         self.assertEqual(snapshot["override_path"], str(override_path))
         self.assertTrue(snapshot["override_exists"])
+        self.assertEqual(snapshot["save_meta"]["status"], "success")
+        self.assertEqual(snapshot["save_meta"]["changed_group"], "supporting")
+        self.assertEqual(snapshot["save_meta"]["target_path"], str(override_path))
         self.assertIn('add_core = ["iot"]', override_text)
         self.assertIn('add_exclude = ["sales"]', override_text)
         self.assertIn('add_supporting = ["platform"]', override_text)
@@ -208,6 +246,9 @@ remove_exclude = []
         self.assertTrue(get_payload["override_exists"])
         self.assertEqual(get_payload["last_loaded_path"], str(override_path))
         self.assertEqual(get_payload["keywords"]["supporting"], ["data", "platform"])
+        self.assertEqual(get_payload["save_meta"]["status"], "success")
+        self.assertEqual(get_payload["save_meta"]["changed_group"], "supporting")
+        self.assertEqual(get_payload["save_meta"]["target_path"], str(override_path))
 
     def test_exclude_keyword_save_updates_override_and_snapshot(self) -> None:
         with temporary_directory() as directory:
@@ -255,6 +296,9 @@ remove_exclude = []
         self.assertEqual(snapshot["keywords"]["exclude"], ["job", "audit"])
         self.assertEqual(snapshot["override_path"], str(override_path))
         self.assertTrue(snapshot["override_exists"])
+        self.assertEqual(snapshot["save_meta"]["status"], "success")
+        self.assertEqual(snapshot["save_meta"]["changed_group"], "exclude")
+        self.assertEqual(snapshot["save_meta"]["target_path"], str(override_path))
         self.assertIn('add_core = ["iot"]', override_text)
         self.assertIn('add_supporting = ["legacy"]', override_text)
         self.assertIn('remove_supporting = ["cloud"]', override_text)
@@ -307,6 +351,9 @@ remove_exclude = []
         self.assertTrue(get_payload["override_exists"])
         self.assertEqual(get_payload["last_loaded_path"], str(override_path))
         self.assertEqual(get_payload["keywords"]["exclude"], ["job", "audit"])
+        self.assertEqual(get_payload["save_meta"]["status"], "success")
+        self.assertEqual(get_payload["save_meta"]["changed_group"], "exclude")
+        self.assertEqual(get_payload["save_meta"]["target_path"], str(override_path))
 
 
 def _post_core_keywords(

@@ -44,10 +44,7 @@ class WebExportActionTests(TestCase):
         self.assertTrue(payload["action_payload"]["started"])
         status_payload = payload["status_payload"]
         self.assertEqual(status_payload["export_control"]["status"], "finished")
-        items = {
-            item["label"]: item["value"]
-            for item in status_payload["export_control"]["items"]
-        }
+        items = {item["label"]: item["value"] for item in status_payload["export_control"]["items"]}
         self.assertEqual(items["Exported files"], "1")
         self.assertEqual(
             items["Exported file path"],
@@ -108,8 +105,9 @@ class WebExportActionTests(TestCase):
             status_while_running = _get_json(f"{base_url}/api/status")
             release_event.set()
             _wait_until(
-                lambda: _get_json(f"{base_url}/api/status")["export_control"]["status"]
-                == "finished"
+                lambda: (
+                    _get_json(f"{base_url}/api/status")["export_control"]["status"] == "finished"
+                )
             )
         finally:
             server.shutdown()
@@ -218,8 +216,9 @@ def _run_server_case(
     try:
         action_payload = _post_json(f"{base_url}/actions/export")
         _wait_until(
-            lambda: _get_json(f"{base_url}/api/status")["export_control"]["status"]
-            == expected_status
+            lambda: (
+                _get_json(f"{base_url}/api/status")["export_control"]["status"] == expected_status
+            )
         )
         status_payload = _get_json(f"{base_url}/api/status")
     finally:

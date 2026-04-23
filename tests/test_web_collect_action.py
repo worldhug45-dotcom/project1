@@ -47,8 +47,7 @@ class WebCollectActionTests(TestCase):
         status_payload = payload["status_payload"]
         self.assertEqual(status_payload["collect_control"]["status"], "finished")
         items = {
-            item["label"]: item["value"]
-            for item in status_payload["collect_control"]["items"]
+            item["label"]: item["value"] for item in status_payload["collect_control"]["items"]
         }
         self.assertEqual(items["Fetched"], "20")
         self.assertEqual(items["Saved"], "4")
@@ -106,8 +105,9 @@ class WebCollectActionTests(TestCase):
             status_while_running = _get_json(f"{base_url}/api/status")
             release_event.set()
             _wait_until(
-                lambda: _get_json(f"{base_url}/api/status")["collect_control"]["status"]
-                == "finished"
+                lambda: (
+                    _get_json(f"{base_url}/api/status")["collect_control"]["status"] == "finished"
+                )
             )
         finally:
             server.shutdown()
@@ -146,10 +146,32 @@ class WebCollectActionTests(TestCase):
         self.assertEqual(status_payload["collect_control"]["status"], "failed")
         self.assertEqual(status_payload["collect_control"]["error_message"], "collect failed")
         items = {
-            item["label"]: item["value"]
-            for item in status_payload["collect_control"]["items"]
+            item["label"]: item["value"] for item in status_payload["collect_control"]["items"]
         }
         self.assertEqual(items["Errors"], "1")
+
+    def test_collect_action_prefers_manual_run_detail_error_line(self) -> None:
+        snapshot_holder = _SnapshotHolder()
+
+        def runner() -> CollectExecutionResult:
+            return CollectExecutionResult(
+                returncode=2,
+                stdout=(
+                    "[manual-run] collect config_error\n"
+                    "details:\n"
+                    "- error: sources.bizinfo.cert_key must be provided via "
+                    "PROJECT1_BIZINFO_CERT_KEY in api source mode.\n"
+                    "next_checks:\n"
+                    "- check: Check that config_path exists and the TOML syntax is valid.\n"
+                ),
+            )
+
+        payload = _run_server_case(snapshot_holder, runner, expected_status="failed")
+
+        self.assertEqual(
+            payload["status_payload"]["collect_control"]["error_message"],
+            "sources.bizinfo.cert_key must be provided via PROJECT1_BIZINFO_CERT_KEY in api source mode.",
+        )
 
 
 class _SnapshotHolder:
@@ -215,8 +237,9 @@ def _run_server_case(
     try:
         action_payload = _post_json(f"{base_url}/actions/collect")
         _wait_until(
-            lambda: _get_json(f"{base_url}/api/status")["collect_control"]["status"]
-            == expected_status
+            lambda: (
+                _get_json(f"{base_url}/api/status")["collect_control"]["status"] == expected_status
+            )
         )
         status_payload = _get_json(f"{base_url}/api/status")
     finally:

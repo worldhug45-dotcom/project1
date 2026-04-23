@@ -7,6 +7,7 @@ venv/
 .env
 .env.*
 !.env.example
+config/.env.local
 
 config/settings.local.toml
 config/settings.dev.toml

@@ -11,7 +11,7 @@ from functools import partial
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from app.application import (
     OperatorCollectService,
@@ -23,16 +23,20 @@ from app.infrastructure.manual_run_gateway import (
     ManualRunExportGateway,
     ManualRunObserveGateway,
 )
-from app.infrastructure.settings import ConfigurationError
+from app.infrastructure.settings import ConfigurationError, load_settings
 from app.ops import (
     OperatorStatusSnapshot,
     build_unavailable_health_snapshot,
     build_unavailable_keywords_snapshot,
+    build_unavailable_settings_snapshot,
     load_operator_health_snapshot,
     load_operator_keywords_snapshot,
+    load_operator_settings_snapshot,
     load_operator_status_snapshot,
+    save_operator_api_keys,
     save_operator_core_keywords,
     save_operator_exclude_keywords,
+    save_operator_sources,
     save_operator_supporting_keywords,
 )
 from app.presentation.web.viewmodels import (
@@ -135,10 +139,13 @@ def main(argv: list[str] | None = None) -> int:
         state_path=args.state_path,
     )
     server = create_server(settings)
-    host, port = server.server_address
+    server_address = server.server_address
+    host = server_address[0]
+    port = server_address[1]
+    display_host = host.decode("utf-8") if isinstance(host, bytes) else host
     print(
         "Project1 dashboard listening at "
-        f"http://{host}:{port} "
+        f"http://{display_host}:{port} "
         f"(config={settings.config_path})"
     )
     try:
@@ -160,7 +167,10 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler contract
         parsed = urlparse(self.path)
         if parsed.path == "/":
-            self._serve_dashboard_html()
+            self._serve_dashboard_html(page="dashboard")
+            return
+        if parsed.path == "/settings":
+            self._serve_dashboard_html(page="settings")
             return
         if parsed.path == "/api/status":
             self._serve_status_json()
@@ -168,8 +178,14 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/keywords":
             self._serve_keywords_json()
             return
+        if parsed.path == "/api/settings":
+            self._serve_settings_json()
+            return
         if parsed.path == "/health":
             self._serve_health_json()
+            return
+        if parsed.path.startswith("/artifacts/"):
+            self._serve_artifact(parsed)
             return
         if parsed.path.startswith("/static/"):
             self._serve_static(parsed.path)
@@ -187,6 +203,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/keywords/exclude":
             self._handle_exclude_keywords_save()
             return
+        if parsed.path == "/api/settings/sources":
+            self._handle_settings_sources_save()
+            return
+        if parsed.path == "/api/settings/api-keys":
+            self._handle_settings_api_keys_save()
+            return
         if parsed.path == "/actions/collect":
             self._handle_collect_action()
             return
@@ -201,10 +223,11 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:  # noqa: A003 - framework name
         return
 
-    def _serve_dashboard_html(self) -> None:
+    def _serve_dashboard_html(self, *, page: str) -> None:
         html = TEMPLATE_PATH.read_text(encoding="utf-8")
         html = html.replace("__STATUS_API_URL__", "/api/status")
         html = html.replace("__KEYWORDS_API_URL__", "/api/keywords")
+        html = html.replace("__SETTINGS_API_URL__", "/api/settings")
         html = html.replace(
             "__KEYWORDS_CORE_SAVE_URL__",
             "/api/keywords/core",
@@ -218,9 +241,20 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             "/api/keywords/exclude",
         )
         html = html.replace("__HEALTH_API_URL__", "/health")
+        html = html.replace("__SETTINGS_SOURCES_SAVE_URL__", "/api/settings/sources")
+        html = html.replace("__SETTINGS_API_KEYS_SAVE_URL__", "/api/settings/api-keys")
         html = html.replace("__COLLECT_ACTION_URL__", "/actions/collect")
         html = html.replace("__EXPORT_ACTION_URL__", "/actions/export")
         html = html.replace("__OBSERVE_ACTION_URL__", "/actions/observe")
+        html = html.replace("__CURRENT_PAGE__", page)
+        html = html.replace(
+            "__DASHBOARD_ACTIVE__",
+            "is-active" if page == "dashboard" else "",
+        )
+        html = html.replace(
+            "__SETTINGS_ACTIVE__",
+            "is-active" if page == "settings" else "",
+        )
         self._send_bytes_response(
             HTTPStatus.OK,
             "text/html; charset=utf-8",
@@ -251,9 +285,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
                 state_path=self.context.settings.state_path,
             ).to_dict()
         except Exception:
-            payload = build_unavailable_health_snapshot(
-                self.context.settings.config_path
-            ).to_dict()
+            payload = build_unavailable_health_snapshot(self.context.settings.config_path).to_dict()
 
         status_code = (
             HTTPStatus.OK
@@ -278,6 +310,27 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = build_unavailable_keywords_snapshot(
                 self.context.settings.config_path,
                 "Keyword snapshot could not be loaded.",
+            ).to_dict()
+            status_code = HTTPStatus.INTERNAL_SERVER_ERROR
+
+        self._send_json_response(status_code, payload)
+
+    def _serve_settings_json(self) -> None:
+        try:
+            payload = load_operator_settings_snapshot(
+                config_path=self.context.settings.config_path,
+            ).to_dict()
+            status_code = HTTPStatus.OK
+        except ConfigurationError as exc:
+            payload = build_unavailable_settings_snapshot(
+                self.context.settings.config_path,
+                str(exc),
+            ).to_dict()
+            status_code = HTTPStatus.INTERNAL_SERVER_ERROR
+        except Exception:
+            payload = build_unavailable_settings_snapshot(
+                self.context.settings.config_path,
+                "Settings snapshot could not be loaded.",
             ).to_dict()
             status_code = HTTPStatus.INTERNAL_SERVER_ERROR
 
@@ -321,9 +374,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_request_body()
             supporting_keywords = payload.get("supporting_keywords")
             if not isinstance(supporting_keywords, list):
-                raise ConfigurationError(
-                    "supporting_keywords must be provided as an array."
-                )
+                raise ConfigurationError("supporting_keywords must be provided as an array.")
 
             snapshot = save_operator_supporting_keywords(
                 config_path=self.context.settings.config_path,
@@ -371,9 +422,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_request_body()
             core_keywords = payload.get("core_keywords")
             if not isinstance(core_keywords, list):
-                raise ConfigurationError(
-                    "core_keywords must be provided as an array."
-                )
+                raise ConfigurationError("core_keywords must be provided as an array.")
 
             snapshot = save_operator_core_keywords(
                 config_path=self.context.settings.config_path,
@@ -421,9 +470,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             payload = self._read_json_request_body()
             exclude_keywords = payload.get("exclude_keywords")
             if not isinstance(exclude_keywords, list):
-                raise ConfigurationError(
-                    "exclude_keywords must be provided as an array."
-                )
+                raise ConfigurationError("exclude_keywords must be provided as an array.")
 
             snapshot = save_operator_exclude_keywords(
                 config_path=self.context.settings.config_path,
@@ -466,6 +513,114 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             },
         )
 
+    def _handle_settings_sources_save(self) -> None:
+        try:
+            payload = self._read_json_request_body()
+            sources_payload = payload.get("sources")
+            source_mode = payload.get("source_mode")
+            extra_sources = payload.get("extra_sources", [])
+            if not isinstance(sources_payload, dict):
+                raise ConfigurationError("sources must be provided as an object.")
+            if source_mode is not None and not isinstance(source_mode, str):
+                raise ConfigurationError("source_mode must be provided as a string.")
+            if not isinstance(extra_sources, list):
+                raise ConfigurationError("extra_sources must be provided as an array.")
+
+            snapshot = save_operator_sources(
+                config_path=self.context.settings.config_path,
+                source_overrides=sources_payload,
+                source_mode=source_mode,
+                extra_sources=extra_sources,
+            )
+        except json.JSONDecodeError:
+            self._send_json_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "saved": False,
+                    "error_message": "Request body must be valid JSON.",
+                },
+            )
+            return
+        except ConfigurationError as exc:
+            self._send_json_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "saved": False,
+                    "error_message": str(exc),
+                },
+            )
+            return
+        except Exception:
+            self._send_json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "saved": False,
+                    "error_message": "Source settings could not be saved.",
+                },
+            )
+            return
+
+        self._send_json_response(
+            HTTPStatus.OK,
+            {
+                "saved": True,
+                "message": "Source settings saved.",
+                "settings_snapshot": snapshot.to_dict(),
+            },
+        )
+
+    def _handle_settings_api_keys_save(self) -> None:
+        try:
+            payload = self._read_json_request_body()
+            bizinfo_api_key = payload.get("bizinfo_api_key")
+            g2b_api_key = payload.get("g2b_api_key")
+            if bizinfo_api_key is not None and not isinstance(bizinfo_api_key, str):
+                raise ConfigurationError("bizinfo_api_key must be provided as a string.")
+            if g2b_api_key is not None and not isinstance(g2b_api_key, str):
+                raise ConfigurationError("g2b_api_key must be provided as a string.")
+
+            snapshot = save_operator_api_keys(
+                config_path=self.context.settings.config_path,
+                bizinfo_api_key=bizinfo_api_key,
+                g2b_api_key=g2b_api_key,
+            )
+        except json.JSONDecodeError:
+            self._send_json_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "saved": False,
+                    "error_message": "Request body must be valid JSON.",
+                },
+            )
+            return
+        except ConfigurationError as exc:
+            self._send_json_response(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "saved": False,
+                    "error_message": str(exc),
+                },
+            )
+            return
+        except Exception:
+            self._send_json_response(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {
+                    "saved": False,
+                    "error_message": "API key settings could not be saved.",
+                },
+            )
+            return
+
+        self._send_json_response(
+            HTTPStatus.OK,
+            {
+                "saved": True,
+                "message": "API key settings saved.",
+                "settings_snapshot": snapshot.to_dict(),
+            },
+        )
+
     def _serve_static(self, request_path: str) -> None:
         relative_path = PurePosixPath(request_path.removeprefix("/static/"))
         asset_path = (STATIC_ROOT / Path(relative_path)).resolve()
@@ -483,6 +638,72 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             content_type or "application/octet-stream",
             asset_path.read_bytes(),
         )
+
+    def _serve_artifact(self, parsed) -> None:
+        download = parse_qs(parsed.query).get("download", ["0"])[0].lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+        try:
+            target_path = self._resolve_artifact_target(parsed.path)
+        except ConfigurationError:
+            self.send_error(HTTPStatus.FORBIDDEN, "Forbidden")
+            return
+
+        if not target_path.exists() or not target_path.is_file():
+            self.send_error(HTTPStatus.NOT_FOUND, "Not Found")
+            return
+
+        content_type, _encoding = mimetypes.guess_type(target_path.name)
+        extra_headers = {}
+        if download:
+            extra_headers["Content-Disposition"] = f'attachment; filename="{target_path.name}"'
+
+        self._send_bytes_response(
+            HTTPStatus.OK,
+            content_type or "application/octet-stream",
+            target_path.read_bytes(),
+            extra_headers=extra_headers,
+        )
+
+    def _resolve_artifact_target(self, request_path: str) -> Path:
+        if request_path == "/artifacts/report":
+            return self.context.settings.log_path
+
+        if request_path.startswith("/artifacts/export/"):
+            relative_path = unquote(request_path.removeprefix("/artifacts/export/"))
+            export_root = self._load_export_output_dir()
+            return self._resolve_relative_artifact_path(export_root, relative_path)
+
+        if request_path.startswith("/artifacts/raw/"):
+            relative_path = unquote(request_path.removeprefix("/artifacts/raw/"))
+            return self._resolve_relative_artifact_path(
+                self.context.settings.raw_output_dir,
+                relative_path,
+            )
+
+        raise ConfigurationError("Artifact route is not allowed.")
+
+    def _resolve_relative_artifact_path(self, root: Path, relative_path: str) -> Path:
+        normalized_relative = PurePosixPath(relative_path)
+        if not normalized_relative.parts or normalized_relative.is_absolute():
+            raise ConfigurationError("Artifact path is required.")
+
+        root_resolved = root.resolve()
+        candidate = (root_resolved / Path(normalized_relative)).resolve()
+        if root_resolved not in candidate.parents and candidate != root_resolved:
+            raise ConfigurationError("Artifact path escapes the allowed root.")
+        return candidate
+
+    def _load_export_output_dir(self) -> Path:
+        settings = load_settings(
+            self.context.settings.config_path,
+            cli_overrides={"action": "export"},
+        )
+        return settings.export.output_dir
 
     def _send_json_response(
         self,
@@ -512,10 +733,15 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         status: HTTPStatus,
         content_type: str,
         payload: bytes,
+        *,
+        extra_headers: dict[str, str] | None = None,
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(payload)
 

@@ -30,7 +30,9 @@ class BizinfoNoticeNormalizer:
             title=raw_notice.title,
             organization=raw_notice.organization,
             eligible=eligible,
-            matched_core_keywords=_keywords_by_group(match_result.match_keywords, KeywordGroup.CORE),
+            matched_core_keywords=_keywords_by_group(
+                match_result.match_keywords, KeywordGroup.CORE
+            ),
             matched_supporting_keywords=_keywords_by_group(
                 match_result.match_keywords,
                 KeywordGroup.SUPPORTING,
@@ -42,11 +44,7 @@ class BizinfoNoticeNormalizer:
                 if match_result.primary_domain is not None
                 else None
             ),
-            skip_reason=(
-                _keyword_skip_reason(match_result)
-                if not eligible
-                else None
-            ),
+            skip_reason=(_keyword_skip_reason(match_result) if not eligible else None),
         )
 
     def normalize(self, raw_notice: object) -> Notice:

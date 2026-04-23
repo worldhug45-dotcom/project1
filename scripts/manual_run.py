@@ -128,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
                 "recorded_at": now_isoformat(),
                 "config_path": str(args.config),
                 "keyword_override_path": "not loaded",
+                "error_message": str(exc),
             },
         )
         _print_failure_help(
@@ -188,6 +189,7 @@ def _run_collect_or_export(
                 config_path=args.config,
                 keyword_override_path=keyword_override_path,
                 source_mode=args.source_mode or settings.runtime.source_mode,
+                error_message=_extract_process_error_message(completed),
             ),
         )
         _print_failure_help(
@@ -217,6 +219,7 @@ def _run_collect_or_export(
                 "recorded_at": now_isoformat(),
                 "config_path": str(args.config),
                 "keyword_override_path": _display_path(keyword_override_path),
+                "error_message": "run_summary payload was not emitted.",
             },
         )
         _print_failure_help(
@@ -245,6 +248,7 @@ def _run_collect_or_export(
             config_path=args.config,
             keyword_override_path=keyword_override_path,
             source_mode=args.source_mode or settings.runtime.source_mode,
+            error_message=None,
         ),
     )
     return completed.returncode
@@ -293,6 +297,7 @@ def _run_observe(
                 keyword_override_path=keyword_override_path,
                 latest_observation=latest_observation,
                 latest_raw_jsonl=latest_raw_jsonl,
+                error_message=_extract_process_error_message(completed),
             ),
         )
         _print_failure_help(
@@ -318,6 +323,7 @@ def _run_observe(
             keyword_override_path=keyword_override_path,
             latest_observation=latest_observation,
             latest_raw_jsonl=latest_raw_jsonl,
+            error_message=None,
         ),
     )
     return completed.returncode
@@ -354,6 +360,7 @@ def _collect_or_export_state_payload(
     config_path: Path,
     keyword_override_path: Path | None,
     source_mode: str,
+    error_message: str | None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": status,
@@ -363,6 +370,7 @@ def _collect_or_export_state_payload(
         "db_path": str(settings.storage.database_path),
         "export_output_dir": str(settings.export.output_dir),
         "source_mode": source_mode,
+        "error_message": error_message,
     }
     if summary is None:
         return payload
@@ -397,6 +405,7 @@ def _observe_state_payload(
     keyword_override_path: Path | None,
     latest_observation: CollectObservationRecord | None,
     latest_raw_jsonl: Path | None,
+    error_message: str | None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "status": status,
@@ -409,6 +418,7 @@ def _observe_state_payload(
         "observation_snapshot_db_dir": str(args.snapshot_db_dir),
         "latest_raw_jsonl_path": _display_path(latest_raw_jsonl),
         "source_mode": args.source_mode,
+        "error_message": error_message,
     }
     if latest_observation is None:
         return payload
@@ -545,9 +555,7 @@ def _print_failure_help(action: str, *, source_mode: str | None, reason: str) ->
         checks.append("Check the previous error log and run_summary status first.")
 
     if action in {"collect", "observe"} and source_mode == "api":
-        checks.append(
-            f"api mode requires the {BIZINFO_CERT_KEY_ENV_VAR} environment variable."
-        )
+        checks.append(f"api mode requires the {BIZINFO_CERT_KEY_ENV_VAR} environment variable.")
     if action == "collect":
         checks.append("Check whether source_mode and fixture/api settings match the intended run.")
         checks.append("Check write permission for db_path and export_output_dir.")
@@ -595,6 +603,34 @@ def _extract_run_summary(stdout: str) -> dict[str, object] | None:
     return None
 
 
+def _extract_process_error_message(completed: subprocess.CompletedProcess[str]) -> str | None:
+    stderr = completed.stderr.strip()
+    if stderr:
+        return stderr.splitlines()[-1]
+
+    for line in completed.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("- error: "):
+            return stripped.removeprefix("- error: ").strip()
+        if not stripped.startswith("{"):
+            continue
+        try:
+            payload = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+        if payload.get("event_type") == "error":
+            error_message = payload.get("error_message")
+            if isinstance(error_message, str) and error_message.strip():
+                return error_message.strip()
+
+    stdout = completed.stdout.strip()
+    if stdout:
+        return stdout.splitlines()[-1].strip()
+    return None
+
+
 def _print_process_output(completed: subprocess.CompletedProcess[str]) -> None:
     if completed.stdout:
         print(completed.stdout, end="")
@@ -619,6 +655,7 @@ def _display_path(path: Path | None) -> str:
     if path is None:
         return "not available"
     return str(path)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

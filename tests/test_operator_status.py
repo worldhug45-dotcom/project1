@@ -1,9 +1,14 @@
 import json
+import os
 from pathlib import Path
 from unittest import TestCase
 
 from app.ops import load_operator_status_snapshot
-from app.ops.observation import CollectObservationRecord, NoticeObservationExample, save_observation_history
+from app.ops.observation import (
+    CollectObservationRecord,
+    NoticeObservationExample,
+    save_observation_history,
+)
 from tests.temp_utils import temporary_directory
 
 
@@ -17,13 +22,23 @@ class OperatorStatusTests(TestCase):
             log_path = root / "report.md"
             state_path = root / "manual_state.json"
             output_dir = root / "output"
+            older_xlsx = output_dir / "notices_20260420_run.xlsx"
             latest_xlsx = output_dir / "notices_20260421_run.xlsx"
+            older_raw = raw_output_dir / "20260420.jsonl"
+            latest_raw = raw_output_dir / "20260421.jsonl"
 
             output_dir.mkdir(parents=True, exist_ok=True)
+            older_xlsx.write_bytes(b"older-xlsx")
             latest_xlsx.write_bytes(b"fake-xlsx")
             raw_output_dir.mkdir(parents=True, exist_ok=True)
-            (raw_output_dir / "latest.jsonl").write_text("{}\n", encoding="utf-8")
+            older_raw.write_text('{"day":"older"}\n', encoding="utf-8")
+            latest_raw.write_text('{"day":"latest"}\n', encoding="utf-8")
             log_path.write_text("# report\n", encoding="utf-8")
+            os.utime(older_xlsx, (1_713_657_600, 1_713_657_600))
+            os.utime(latest_xlsx, (1_713_744_000, 1_713_744_000))
+            os.utime(log_path, (1_713_787_200, 1_713_787_200))
+            os.utime(older_raw, (1_713_830_400, 1_713_830_400))
+            os.utime(latest_raw, (1_713_916_800, 1_713_916_800))
             _write_observation_history(history_path)
             state_path.write_text(
                 json.dumps(
@@ -69,6 +84,17 @@ class OperatorStatusTests(TestCase):
         self.assertEqual(payload["recent_observe"]["run_id"], "observe-history-run-1")
         self.assertEqual(payload["recent_observe"]["observed_on"], "2026-04-21")
         self.assertEqual(payload["updated_at"], "2026-04-21T00:30:00+00:00")
+        self.assertEqual(len(payload["artifacts"]), 5)
+        self.assertEqual(payload["artifacts"][0]["kind"], "export_result")
+        self.assertEqual(payload["artifacts"][0]["name"], latest_xlsx.name)
+        self.assertEqual(payload["artifacts"][1]["kind"], "export_result")
+        self.assertEqual(payload["artifacts"][1]["name"], older_xlsx.name)
+        self.assertEqual(payload["artifacts"][2]["kind"], "observation_report")
+        self.assertEqual(payload["artifacts"][2]["name"], log_path.name)
+        self.assertEqual(payload["artifacts"][3]["kind"], "observation_raw")
+        self.assertEqual(payload["artifacts"][3]["name"], latest_raw.name)
+        self.assertEqual(payload["artifacts"][4]["kind"], "observation_raw")
+        self.assertEqual(payload["artifacts"][4]["name"], older_raw.name)
 
 
 def _write_fixture_config(directory: Path) -> Path:
